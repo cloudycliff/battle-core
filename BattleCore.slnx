@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BattleCore/BattleCore.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BattleCore.Tests/BattleCore.Tests.csproj" />
+  </Folder>
+</Solution>
