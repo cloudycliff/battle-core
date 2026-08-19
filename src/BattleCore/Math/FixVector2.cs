@@ -22,6 +22,9 @@ public readonly record struct FixVector2(Fix64 X, Fix64 Y)
     public static Fix64 DistanceSquared(FixVector2 left, FixVector2 right) =>
         (left - right).LengthSquared;
 
+    public static Fix64 Dot(FixVector2 left, FixVector2 right) =>
+        (left.X * right.X) + (left.Y * right.Y);
+
     public static FixVector2 operator +(FixVector2 left, FixVector2 right) =>
         new(left.X + right.X, left.Y + right.Y);
 

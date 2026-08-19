@@ -11,10 +11,13 @@ public sealed class CharacterTemplate
         IReadOnlyDictionary<string, long> baseAttributes,
         bool targetable = true,
         bool damageable = true,
-        bool blocksMovement = true)
+        bool blocksMovement = true,
+        int lives = 0,
+        IEnumerable<string>? skillIds = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(baseAttributes);
+        ArgumentOutOfRangeException.ThrowIfNegative(lives);
 
         Id = id;
         Radius = radius;
@@ -23,6 +26,8 @@ public sealed class CharacterTemplate
         Targetable = targetable;
         Damageable = damageable;
         BlocksMovement = blocksMovement;
+        Lives = lives;
+        SkillIds = (skillIds ?? []).ToArray();
     }
 
     public string Id { get; }
@@ -31,4 +36,6 @@ public sealed class CharacterTemplate
     public bool Targetable { get; }
     public bool Damageable { get; }
     public bool BlocksMovement { get; }
+    public int Lives { get; }
+    public IReadOnlyList<string> SkillIds { get; }
 }

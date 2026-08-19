@@ -10,6 +10,9 @@ The first implementation slice includes:
 - character spawn, query, facing, soft targets, directional movement, and `MoveTo`
 - map, terrain, and enemy blocking rules
 - deterministic attribute modifier ordering
+- damage, heal, layered shields, death, lives auto-revive, and ally corpse revive
+- configurable skill timelines with cast duration, key-frame effects, cooldowns, and single/circle/fan/ring targeting
+- configurable Buff stacking, attribute modifiers, periodic effects, control states, immunity, replacement, and dispel
 
 Run the test suite:
 

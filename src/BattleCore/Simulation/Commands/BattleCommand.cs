@@ -1,3 +1,4 @@
+using BattleCore.Combat;
 using BattleCore.Math;
 
 namespace BattleCore.Simulation.Commands;
@@ -35,3 +36,59 @@ public sealed record SetTargetCommand(
     long Frame,
     long CharacterId,
     long? TargetId) : BattleCommand(Frame);
+
+public sealed record CastSkillCommand(
+    long Frame,
+    long CasterId,
+    string SkillId,
+    long? TargetId = null,
+    FixVector2? TargetPoint = null,
+    FixVector2? Direction = null) : BattleCommand(Frame);
+
+public sealed record DealDamageCommand(
+    long Frame,
+    long SourceId,
+    long TargetId,
+    DamageType DamageType,
+    long Flat,
+    string? AttributeId = null,
+    long Ratio = 0,
+    bool CanCrit = true) : BattleCommand(Frame);
+
+public sealed record HealCommand(
+    long Frame,
+    long SourceId,
+    long TargetId,
+    long Flat,
+    string? AttributeId = null,
+    long Ratio = 0,
+    bool CanCrit = true) : BattleCommand(Frame);
+
+public sealed record GrantShieldCommand(
+    long Frame,
+    long TargetId,
+    long Amount,
+    int DurationFrames) : BattleCommand(Frame);
+
+public sealed record ApplyBuffCommand(
+    long Frame,
+    long SourceId,
+    long TargetId,
+    string BuffId) : BattleCommand(Frame);
+
+public sealed record RemoveBuffCommand(
+    long Frame,
+    long TargetId,
+    long BuffInstanceId) : BattleCommand(Frame);
+
+public sealed record DispelBuffsCommand(
+    long Frame,
+    long SourceId,
+    long TargetId,
+    string Tag,
+    int MaxCount = 1) : BattleCommand(Frame);
+
+public sealed record ReviveCommand(
+    long Frame,
+    long SourceId,
+    long TargetId) : BattleCommand(Frame);

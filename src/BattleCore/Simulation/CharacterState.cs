@@ -1,6 +1,9 @@
 using BattleCore.Attributes;
+using BattleCore.Buffs;
+using BattleCore.Combat;
 using BattleCore.Configuration;
 using BattleCore.Math;
+using BattleCore.Randomness;
 
 namespace BattleCore.Simulation;
 
@@ -13,10 +16,44 @@ internal sealed class CharacterState
     public required bool PlayerControlled { get; init; }
     public required AttributeSet Attributes { get; init; }
     public required long CurrentHp { get; set; }
+    public required DeterministicRng CombatRng { get; init; }
+    public required DeterministicRng AiRng { get; init; }
+    public required int Lives { get; set; }
 
     public Facing Facing { get; set; } = new(0);
     public long? CurrentTargetId { get; set; }
     public MovementIntent Movement { get; set; } = MovementIntent.None;
+    public LifeState LifeState { get; set; } = LifeState.Alive;
+    public long? ReviveAtFrame { get; set; }
+    public long? DespawnAtFrame { get; set; }
+    public List<ShieldLayer> Shields { get; } = [];
+    public ActiveSkillCast? ActiveSkill { get; set; }
+    public Dictionary<string, long> CooldownReadyFrames { get; } =
+        new(StringComparer.Ordinal);
+    public List<BuffInstance> Buffs { get; } = [];
+
+    public bool CanAct => LifeState == LifeState.Alive;
+
+    public bool CanMove =>
+        CanAct &&
+        !HasControl(ControlType.Stun) &&
+        !HasControl(ControlType.Root);
+
+    public bool IsSelectable =>
+        LifeState == LifeState.Alive && Template.Targetable;
+
+    public long ShieldTotal => Shields.Sum(layer => layer.Amount);
+
+    public bool HasControl(ControlType control) =>
+        Buffs.Any(buff => buff.Definition.Effects
+            .OfType<ControlBuffEffect>()
+            .Any(effect => effect.Control == control));
+
+    public IReadOnlySet<ControlType> Controls =>
+        Buffs.SelectMany(buff => buff.Definition.Effects)
+            .OfType<ControlBuffEffect>()
+            .Select(effect => effect.Control)
+            .ToHashSet();
 
     public CharacterSnapshot Snapshot(string maxHpAttributeId) =>
         new(
@@ -29,9 +66,22 @@ internal sealed class CharacterState
             CurrentTargetId,
             CurrentHp,
             Attributes.Get(maxHpAttributeId),
+            Lives,
+            LifeState,
+            ShieldTotal,
+            ActiveSkill?.Definition.Id,
+            new Dictionary<string, long>(CooldownReadyFrames, StringComparer.Ordinal),
+            Buffs.OrderBy(buff => buff.InstanceId)
+                .Select(buff => new BuffSnapshot(
+                    buff.InstanceId,
+                    buff.Definition.Id,
+                    buff.Stacks,
+                    buff.ExpiryFrame))
+                .ToArray(),
+            Controls,
             PlayerControlled,
-            Template.Targetable,
-            Template.Damageable,
+            IsSelectable,
+            Template.Damageable && CanAct,
             Template.BlocksMovement);
 }
 

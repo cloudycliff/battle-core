@@ -18,21 +18,31 @@ internal static class TestBattleFactory
 
     public static BattleConfig CreateConfig(
         Fix64? radius = null,
-        bool blocksMovement = true)
+        bool blocksMovement = true,
+        int lives = 0,
+        int corpseDurationFrames = 30,
+        int reviveDelayFrames = 2)
     {
-        var attributes = Bindings.AllIds().ToArray();
+        var attributes = Bindings.AllIds().Concat(["attack"]).ToArray();
         var values = attributes.ToDictionary(id => id, _ => 0L, StringComparer.Ordinal);
         values[Bindings.MaxHp] = 100;
         values[Bindings.CritDamage] = 15_000;
         values[Bindings.MoveSpeed] = 3;
+        values["attack"] = 100;
 
         var template = new CharacterTemplate(
             "hero",
             radius ?? Fix64.FromRatio(1, 2),
             values,
-            blocksMovement: blocksMovement);
+            blocksMovement: blocksMovement,
+            lives: lives);
 
-        return new BattleConfig(attributes, Bindings, [template]);
+        return new BattleConfig(
+            attributes,
+            Bindings,
+            [template],
+            corpseDurationFrames: corpseDurationFrames,
+            reviveDelayFrames: reviveDelayFrames);
     }
 
     public static BattleInstance CreateBattle(
