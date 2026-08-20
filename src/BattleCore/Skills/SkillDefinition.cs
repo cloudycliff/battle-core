@@ -56,6 +56,11 @@ public sealed class SkillDefinition
                     $"Skill '{Id}' effect frame {effect.Frame} must be within [0, {DurationFrames - 1}].");
             }
 
+            if (effect is SkillSpawnProjectileEffect or SkillSpawnAreaEffectEffect)
+            {
+                continue;
+            }
+
             if (effect.Target.Kind is
                     SkillTargetKind.CircleAtPoint or
                     SkillTargetKind.CircleAtCaster or

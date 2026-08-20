@@ -37,3 +37,15 @@ public sealed record SkillApplyBuffEffect(
     SkillTarget Target,
     string BuffId)
     : SkillEffect(Frame, Target);
+
+public sealed record SkillSpawnProjectileEffect(
+    int Frame,
+    SkillTarget Target,
+    string ProjectileId)
+    : SkillEffect(Frame, Target);
+
+public sealed record SkillSpawnAreaEffectEffect(
+    int Frame,
+    SkillTarget Target,
+    string AreaEffectId)
+    : SkillEffect(Frame, Target);

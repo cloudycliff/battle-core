@@ -11,7 +11,9 @@ public sealed record SpawnCharacterCommand(
     int FactionId,
     FixVector2 Position,
     bool PlayerControlled = false,
-    long? InitialHp = null) : BattleCommand(Frame);
+    long? InitialHp = null,
+    string? BrainId = null,
+    long? OwnerId = null) : BattleCommand(Frame);
 
 public sealed record MoveDirectionCommand(
     long Frame,

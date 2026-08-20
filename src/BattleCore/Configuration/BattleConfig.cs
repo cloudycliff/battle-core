@@ -1,6 +1,10 @@
 using System.Collections.ObjectModel;
+using BattleCore.AreaEffects;
+using BattleCore.Brains;
 using BattleCore.Buffs;
+using BattleCore.Effects;
 using BattleCore.Math;
+using BattleCore.Projectiles;
 using BattleCore.Skills;
 
 namespace BattleCore.Configuration;
@@ -13,6 +17,9 @@ public sealed class BattleConfig
         IEnumerable<CharacterTemplate> characterTemplates,
         IEnumerable<SkillDefinition>? skillDefinitions = null,
         IEnumerable<BuffDefinition>? buffDefinitions = null,
+        IEnumerable<ProjectileDefinition>? projectileDefinitions = null,
+        IEnumerable<AreaEffectDefinition>? areaEffectDefinitions = null,
+        IEnumerable<BrainDefinition>? brainDefinitions = null,
         long defenseK = 100,
         int maximumMitigation = 8_000,
         long minimumDamage = 1,
@@ -31,6 +38,12 @@ public sealed class BattleConfig
             (skillDefinitions ?? []).ToDictionary(skill => skill.Id, StringComparer.Ordinal));
         BuffDefinitions = new ReadOnlyDictionary<string, BuffDefinition>(
             (buffDefinitions ?? []).ToDictionary(buff => buff.Id, StringComparer.Ordinal));
+        ProjectileDefinitions = new ReadOnlyDictionary<string, ProjectileDefinition>(
+            (projectileDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
+        AreaEffectDefinitions = new ReadOnlyDictionary<string, AreaEffectDefinition>(
+            (areaEffectDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
+        BrainDefinitions = new ReadOnlyDictionary<string, BrainDefinition>(
+            (brainDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
         DefenseK = defenseK;
         MaximumMitigation = maximumMitigation;
         MinimumDamage = minimumDamage;
@@ -45,6 +58,9 @@ public sealed class BattleConfig
     public IReadOnlyDictionary<string, CharacterTemplate> CharacterTemplates { get; }
     public IReadOnlyDictionary<string, SkillDefinition> SkillDefinitions { get; }
     public IReadOnlyDictionary<string, BuffDefinition> BuffDefinitions { get; }
+    public IReadOnlyDictionary<string, ProjectileDefinition> ProjectileDefinitions { get; }
+    public IReadOnlyDictionary<string, AreaEffectDefinition> AreaEffectDefinitions { get; }
+    public IReadOnlyDictionary<string, BrainDefinition> BrainDefinitions { get; }
     public long DefenseK { get; }
     public int MaximumMitigation { get; }
     public long MinimumDamage { get; }
@@ -106,6 +122,13 @@ public sealed class BattleConfig
                         $"Character '{template.Id}' references unknown skill '{skillId}'.");
                 }
             }
+
+            if (template.BrainId is string brainId &&
+                !BrainDefinitions.ContainsKey(brainId))
+            {
+                errors.Add(
+                    $"Character '{template.Id}' references unknown brain '{brainId}'.");
+            }
         }
 
         foreach (var skill in SkillDefinitions.Values)
@@ -130,7 +153,36 @@ public sealed class BattleConfig
                     errors.Add($"Skill '{skill.Id}' references unknown buff '{buffId}'.");
                 }
             }
+
+            foreach (var projectileId in skill.Effects
+                         .OfType<SkillSpawnProjectileEffect>()
+                         .Select(effect => effect.ProjectileId))
+            {
+                if (!ProjectileDefinitions.ContainsKey(projectileId))
+                {
+                    errors.Add($"Skill '{skill.Id}' references unknown projectile '{projectileId}'.");
+                }
+            }
+
+            foreach (var areaEffectId in skill.Effects
+                         .OfType<SkillSpawnAreaEffectEffect>()
+                         .Select(effect => effect.AreaEffectId))
+            {
+                if (!AreaEffectDefinitions.ContainsKey(areaEffectId))
+                {
+                    errors.Add($"Skill '{skill.Id}' references unknown area effect '{areaEffectId}'.");
+                }
+            }
         }
+
+        ValidateHitCatalog("Projectile", ProjectileDefinitions.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.HitEffects,
+            StringComparer.Ordinal), errors);
+        ValidateHitCatalog("AreaEffect", AreaEffectDefinitions.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.HitEffects,
+            StringComparer.Ordinal), errors);
 
         foreach (var buff in BuffDefinitions.Values)
         {
@@ -191,6 +243,43 @@ public sealed class BattleConfig
             AttributeBuffEffect attribute => attribute.AttributeId,
             PeriodicDamageBuffEffect damage => damage.AttributeId,
             PeriodicHealBuffEffect heal => heal.AttributeId,
+            _ => null,
+        };
+
+    private void ValidateHitCatalog(
+        string kind,
+        IReadOnlyDictionary<string, IReadOnlyList<HitEffect>> catalog,
+        List<string> errors)
+    {
+        foreach (var (id, hitEffects) in catalog)
+        {
+            foreach (var attributeId in hitEffects
+                         .Select(GetHitAttributeId)
+                         .Where(attributeId => attributeId is not null))
+            {
+                if (!AttributeIds.Contains(attributeId!))
+                {
+                    errors.Add($"{kind} '{id}' references undeclared attribute '{attributeId}'.");
+                }
+            }
+
+            foreach (var buffId in hitEffects
+                         .OfType<HitApplyBuffEffect>()
+                         .Select(effect => effect.BuffId))
+            {
+                if (!BuffDefinitions.ContainsKey(buffId))
+                {
+                    errors.Add($"{kind} '{id}' references unknown buff '{buffId}'.");
+                }
+            }
+        }
+    }
+
+    private static string? GetHitAttributeId(HitEffect effect) =>
+        effect switch
+        {
+            HitDamageEffect damage => damage.AttributeId,
+            HitHealEffect heal => heal.AttributeId,
             _ => null,
         };
 }

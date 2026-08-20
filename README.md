@@ -12,7 +12,10 @@ The first implementation slice includes:
 - deterministic attribute modifier ordering
 - damage, heal, layered shields, death, lives auto-revive, and ally corpse revive
 - configurable skill timelines with cast duration, key-frame effects, cooldowns, and single/circle/fan/ring targeting
+- linear piercing projectiles and interval area effects spawned from skills
 - configurable Buff stacking, attribute modifiers, periodic effects, control states, immunity, replacement, and dispel
+- built-in Brains (`Idle`, `ChaseAttack`, `HoldPosition`, `FollowOwner`) that emit the same commands as players
+- time-based spawn tables referenced by map spawn points; player markers are query-only
 
 Run the test suite:
 

@@ -1,0 +1,272 @@
+using BattleCore.Attributes;
+using BattleCore.Brains;
+using BattleCore.Randomness;
+using BattleCore.Simulation.Commands;
+using BattleCore.Simulation.Events;
+
+namespace BattleCore.Simulation;
+
+public sealed partial class BattleInstance
+{
+
+    private void ConsumeCommands(List<BattleEvent> events)
+    {
+        if (!_commands.Remove(CurrentFrame, out var commands))
+        {
+            return;
+        }
+
+        foreach (var queued in commands
+                     .OrderBy(item => CommandEntityId(item.Command))
+                     .ThenBy(item => item.Sequence))
+        {
+            ApplyCommand(queued.Command, queued.Sequence, events);
+        }
+    }
+
+    private void ApplyCommand(BattleCommand command, long sequence, List<BattleEvent> events)
+    {
+        switch (command)
+        {
+            case SpawnCharacterCommand spawn:
+                Spawn(spawn, events);
+                break;
+            case MoveDirectionCommand move:
+                WithLiving(move.CharacterId, command, events, character =>
+                    character.Movement = MovementIntent.Direction(move.Direction));
+                break;
+            case MoveToCommand moveTo:
+                WithLiving(moveTo.CharacterId, command, events, character =>
+                    character.Movement = MovementIntent.Destination(moveTo.Destination));
+                break;
+            case StopMovingCommand stop:
+                WithLiving(stop.CharacterId, command, events, character =>
+                    character.Movement = MovementIntent.None);
+                break;
+            case SetFacingCommand facing:
+                WithLiving(facing.CharacterId, command, events, character =>
+                {
+                    if (character.Facing == facing.Facing)
+                    {
+                        return;
+                    }
+
+                    character.Facing = facing.Facing;
+                    events.Add(new FacingChangedEvent(
+                        CurrentFrame,
+                        character.Id,
+                        character.Facing));
+                });
+                break;
+            case SetTargetCommand target:
+                SetTarget(target, events);
+                break;
+            case CastSkillCommand cast:
+                CastSkill(cast, events);
+                break;
+            case DealDamageCommand damage:
+                QueueCombat(damage.TargetId, sequence, command, events);
+                break;
+            case HealCommand heal:
+                QueueCombat(heal.TargetId, sequence, command, events);
+                break;
+            case GrantShieldCommand shield:
+                GrantShield(shield, events);
+                break;
+            case ApplyBuffCommand applyBuff:
+                ApplyBuff(applyBuff, events);
+                break;
+            case RemoveBuffCommand removeBuff:
+                RemoveBuff(removeBuff, events);
+                break;
+            case DispelBuffsCommand dispel:
+                DispelBuffs(dispel, events);
+                break;
+            case ReviveCommand revive:
+                Revive(revive, events);
+                break;
+            default:
+                Reject(command, events, "Unsupported command.");
+                break;
+        }
+    }
+
+    private void QueueCombat(
+        long targetId,
+        long sequence,
+        BattleCommand command,
+        List<BattleEvent> events)
+    {
+        if (!_characters.ContainsKey(targetId))
+        {
+            Reject(command, events, $"Character '{targetId}' does not exist.");
+            return;
+        }
+
+        _pendingCombat.Add(new PendingCombatEffect(sequence, targetId, command));
+    }
+
+    private void Spawn(SpawnCharacterCommand command, List<BattleEvent> events)
+    {
+        if (!_config.CharacterTemplates.TryGetValue(command.TemplateId, out var template))
+        {
+            Reject(command, events, $"Unknown character template '{command.TemplateId}'.");
+            return;
+        }
+
+        if (!IsPositionValid(command.Position, template.Radius, command.FactionId, template.BlocksMovement))
+        {
+            Reject(command, events, "Spawn position is blocked or outside map bounds.");
+            return;
+        }
+
+        var attributes = new AttributeSet(template.BaseAttributes);
+        var maxHp = attributes.Get(_config.Bindings.MaxHp);
+        var brainId = command.BrainId ?? template.BrainId;
+        BrainDefinition? brain = null;
+        if (brainId is not null)
+        {
+            if (!_config.BrainDefinitions.TryGetValue(brainId, out brain))
+            {
+                Reject(command, events, $"Unknown brain '{brainId}'.");
+                return;
+            }
+        }
+
+        if (command.OwnerId is long ownerId && !_characters.ContainsKey(ownerId))
+        {
+            Reject(command, events, $"Owner '{ownerId}' does not exist.");
+            return;
+        }
+
+        var id = _nextEntityId++;
+        var character = new CharacterState
+        {
+            Id = id,
+            Template = template,
+            FactionId = command.FactionId,
+            Position = command.Position,
+            PlayerControlled = command.PlayerControlled,
+            Attributes = attributes,
+            CurrentHp = command.InitialHp ?? maxHp,
+            CombatRng = DeterministicRng.Derive(Seed, id, CombatStream),
+            AiRng = DeterministicRng.Derive(Seed, id, AiStream),
+            Lives = template.Lives,
+            Brain = brain,
+            OwnerId = command.OwnerId,
+        };
+
+        _characters.Add(character.Id, character);
+        events.Add(new CharacterSpawnedEvent(
+            CurrentFrame,
+            character.Id,
+            template.Id,
+            character.FactionId,
+            character.Position));
+    }
+
+    private void SetTarget(SetTargetCommand command, List<BattleEvent> events)
+    {
+        WithLiving(command.CharacterId, command, events, character =>
+        {
+            if (command.TargetId is long targetId &&
+                (!_characters.TryGetValue(targetId, out var target) || !target.IsSelectable))
+            {
+                Reject(command, events, $"Target '{targetId}' is unavailable.");
+                return;
+            }
+
+            if (character.CurrentTargetId == command.TargetId)
+            {
+                return;
+            }
+
+            character.CurrentTargetId = command.TargetId;
+            events.Add(new TargetChangedEvent(
+                CurrentFrame,
+                character.Id,
+                character.CurrentTargetId));
+        });
+    }
+    private void WithLiving(
+        long characterId,
+        BattleCommand command,
+        List<BattleEvent> events,
+        Action<CharacterState> action)
+    {
+        if (!TryGetLiving(characterId, command, events, out var character))
+        {
+            return;
+        }
+
+        action(character);
+    }
+
+    private bool TryGetLiving(
+        long characterId,
+        BattleCommand command,
+        List<BattleEvent> events,
+        out CharacterState character)
+    {
+        if (!TryGetCharacter(characterId, command, events, out character))
+        {
+            return false;
+        }
+
+        if (!character.CanAct)
+        {
+            Reject(command, events, $"Character '{characterId}' cannot act.");
+            character = null!;
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool TryGetCharacter(
+        long characterId,
+        BattleCommand command,
+        List<BattleEvent> events,
+        out CharacterState character)
+    {
+        if (_characters.TryGetValue(characterId, out character!))
+        {
+            return true;
+        }
+
+        Reject(command, events, $"Character '{characterId}' does not exist.");
+        return false;
+    }
+
+    private void Reject(BattleCommand command, List<BattleEvent> events, string reason) =>
+        events.Add(new CommandRejectedEvent(
+            CurrentFrame,
+            command.GetType().Name,
+            reason));
+
+    private static long CommandEntityId(BattleCommand command) =>
+        command switch
+        {
+            MoveDirectionCommand value => value.CharacterId,
+            MoveToCommand value => value.CharacterId,
+            StopMovingCommand value => value.CharacterId,
+            SetFacingCommand value => value.CharacterId,
+            SetTargetCommand value => value.CharacterId,
+            CastSkillCommand value => value.CasterId,
+            DealDamageCommand value => value.SourceId,
+            HealCommand value => value.SourceId,
+            GrantShieldCommand value => value.TargetId,
+            ApplyBuffCommand value => value.SourceId,
+            RemoveBuffCommand value => value.TargetId,
+            DispelBuffsCommand value => value.SourceId,
+            ReviveCommand value => value.SourceId,
+            _ => long.MinValue,
+        };
+
+    private readonly record struct QueuedCommand(long Sequence, BattleCommand Command);
+
+    private readonly record struct PendingCombatEffect(
+        long Sequence,
+        long TargetId,
+        BattleCommand Command);
+}

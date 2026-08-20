@@ -1,4 +1,5 @@
 using BattleCore.Attributes;
+using BattleCore.Brains;
 using BattleCore.Buffs;
 using BattleCore.Combat;
 using BattleCore.Configuration;
@@ -19,6 +20,8 @@ internal sealed class CharacterState
     public required DeterministicRng CombatRng { get; init; }
     public required DeterministicRng AiRng { get; init; }
     public required int Lives { get; set; }
+    public BrainDefinition? Brain { get; init; }
+    public long? OwnerId { get; init; }
 
     public Facing Facing { get; set; } = new(0);
     public long? CurrentTargetId { get; set; }

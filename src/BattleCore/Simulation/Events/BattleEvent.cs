@@ -120,3 +120,40 @@ public sealed record CorpseDespawnedEvent(
 public sealed record FactionWipedEvent(
     long Frame,
     int FactionId) : BattleEvent(Frame);
+
+public sealed record ProjectileSpawnedEvent(
+    long Frame,
+    long ProjectileId,
+    string DefinitionId,
+    long SourceId,
+    FixVector2 Position) : BattleEvent(Frame);
+
+public sealed record ProjectileMovedEvent(
+    long Frame,
+    long ProjectileId,
+    FixVector2 From,
+    FixVector2 To) : BattleEvent(Frame);
+
+public sealed record ProjectileHitEvent(
+    long Frame,
+    long ProjectileId,
+    long TargetId) : BattleEvent(Frame);
+
+public sealed record ProjectileDespawnedEvent(
+    long Frame,
+    long ProjectileId) : BattleEvent(Frame);
+
+public sealed record AreaEffectSpawnedEvent(
+    long Frame,
+    long AreaEffectId,
+    string DefinitionId,
+    long SourceId,
+    FixVector2 Position) : BattleEvent(Frame);
+
+public sealed record AreaEffectTickedEvent(
+    long Frame,
+    long AreaEffectId) : BattleEvent(Frame);
+
+public sealed record AreaEffectDespawnedEvent(
+    long Frame,
+    long AreaEffectId) : BattleEvent(Frame);
