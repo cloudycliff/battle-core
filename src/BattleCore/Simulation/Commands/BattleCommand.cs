@@ -1,3 +1,4 @@
+using BattleCore.Attributes;
 using BattleCore.Combat;
 using BattleCore.Math;
 
@@ -13,7 +14,8 @@ public sealed record SpawnCharacterCommand(
     bool PlayerControlled = false,
     long? InitialHp = null,
     string? BrainId = null,
-    long? OwnerId = null) : BattleCommand(Frame);
+    long? OwnerId = null,
+    IReadOnlyList<ModifierSource>? ModifierSources = null) : BattleCommand(Frame);
 
 public sealed record SpawnPickupCommand(
     long Frame,
@@ -99,3 +101,14 @@ public sealed record ReviveCommand(
     long Frame,
     long SourceId,
     long TargetId) : BattleCommand(Frame);
+
+public sealed record ApplyModifierSourceCommand(
+    long Frame,
+    long CharacterId,
+    string SourceId,
+    IReadOnlyList<ModifierContribution> Modifiers) : BattleCommand(Frame);
+
+public sealed record RemoveModifierSourceCommand(
+    long Frame,
+    long CharacterId,
+    string SourceId) : BattleCommand(Frame);

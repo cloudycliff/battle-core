@@ -110,6 +110,13 @@ public sealed class SkillDefinition
                 throw new ArgumentException(
                     $"Skill '{Id}' throw distance must be positive.");
             }
+
+            if (effect is SkillDashEffect dash &&
+                dash.Distance <= Fix64.Zero)
+            {
+                throw new ArgumentException(
+                    $"Skill '{Id}' dash distance must be positive.");
+            }
         }
     }
 

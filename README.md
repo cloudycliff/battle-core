@@ -14,9 +14,9 @@ Add a project reference to `src/BattleCore/BattleCore.csproj` (`net8.0`).
 
 ## Status
 
-Usable for a host: movement, skills, damage pipeline, buffs, linear projectiles, area effects, four built-in Brains, skill summons, carry/throw, pickups, corpse revive skills, time-based spawn tables.
+Usable for a host: movement, skills, damage pipeline, buffs, linear projectiles, area effects, four built-in Brains, skill summons, carry/throw, pickups, corpse revive skills, dash, named modifier sources, time-based spawn tables.
 
-Not done yet: dash, JSON loaders. See the guide for the full split, including V1 non-goals.
+Not done yet: JSON loaders and the remaining V1 configuration features. See the guide for the full split, including V1 non-goals.
 
 ## Design (frozen)
 

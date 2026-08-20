@@ -274,8 +274,9 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 
 选敌：自身、显式目标、当前软锁、点圆、自身圆、自身扇、点环。过滤：敌/友/自身/全部。扇形需要非零 `Direction`；点圆/环需要地图内 `TargetPoint`。普通选敌跳过 Dead 和复活倒计时。`SkillTarget.CorpsesOnly`（如 `ExplicitDeadAlly` / `CurrentDeadAlly`）只选 `CanBeRevived=true` 且当前未被禁止复活的 Dead；可对这类尸体 `SetTarget`，软锁在其可复活期间不会被清掉。复活倒计时中仍不可选。
 
-已实现的效果：伤害、治疗、护盾、上 Buff、创建投射物、创建区域、召唤 Character、StartCarry / Throw / Drop、复活友方尸体（`SkillReviveEffect`）。Buff 可用 `PreventReviveBuffEffect` 禁止复活；该效果随 Buff 跨死亡保留，直到 Buff 到期或被移除。
-尚未实现：冲锋位移。
+已实现的效果：伤害、治疗、护盾、上 Buff、创建投射物、创建区域、冲锋位移、召唤 Character、StartCarry / Throw / Drop、复活友方尸体（`SkillReviveEffect`）。Buff 可用 `PreventReviveBuffEffect` 禁止复活；该效果随 Buff 跨死亡保留，直到 Buff 到期或被移除。
+
+`SkillDashEffect(Frame, Distance)` 使用施法 `Direction` 冲固定距离，朝 `TargetPoint` 冲但不越过该点，或朝 `TargetId` 在效果帧的位置冲固定距离。冲锋复用普通移动的地图、地形和敌对占位阻挡，遇阻缩短，不滑墙、不穿过中途障碍。Root 会阻止施放/生效，被 Carry 的单位不能自行冲锋；载体冲锋时被携带者同步跟随。位移产生 `CharacterMovedEvent`，效果生效产生以施法者为目标的 `SkillHitEvent`。
 
 冷却按逻辑帧。默认真言类会被沉默打断，武器类会被缴械打断（`SkillCategory`）。眩晕取消当前施法。`CanMoveWhileCasting` 控制前摇/后摇能否走。
 
@@ -337,17 +338,16 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 朝向：`SetFacing`（受伤不转向）。全圆 1024 档。  
 目标：`SetTarget` 软锁；技能是否打它由选敌器决定。  
 战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、Buff 添加/移除/驱散、`Revive`（允许复活且未被禁止复活的友方 Dead）。
-生成：`SpawnCharacter`（可 `BrainId`、`OwnerId`、覆盖初始 HP）、`SpawnPickup`。
-
-尚未提供：`ApplyModifierSource`（装备等外部修正；即时拾取可以直接加永久属性修饰）。
+生成：`SpawnCharacter`（可 `BrainId`、`OwnerId`、覆盖初始 HP、开局 `ModifierSources`）、`SpawnPickup`。
+装备等局外修正：`ApplyModifierSource` / `RemoveModifierSource`。同一 `SourceId` 再 Apply 会先卸旧组再挂新组。核不算装备表；宿主把算好的 Flat/Percent/Final 灌进来。即时拾取仍可加匿名永久修饰，与具名来源互不替代。
 
 ### 事件
 
-生成/移动/朝向/目标、技能开始/命中/结束、弹体与区域、Buff 与控制、伤害/治疗/护盾、携带开始/投掷/结束、拾取生成/`PickedUp`、死亡/复活/尸体消失、阵营清空、超时、命令拒绝。
+生成/移动/朝向/目标、技能开始/命中/结束、弹体与区域、Buff 与控制、伤害/治疗/护盾、携带开始/投掷/结束、拾取生成/`PickedUp`、修饰来源挂上/卸下、死亡/复活/尸体消失、阵营清空、超时、命令拒绝。
 
 ### 查询
 
-`GetCharacter` / `GetCharacters`、`GetProjectiles`、`GetAreaEffects`、`GetPickups`、`GetSpawnPoints`、`GetPlayerSpawnMarkers`。快照含 HP、护盾、Lives、Buff、CD、控制、是否可操作等。查询**不得**改模拟。
+`GetCharacter` / `GetCharacters`、`GetAttribute`、`GetProjectiles`、`GetAreaEffects`、`GetPickups`、`GetSpawnPoints`、`GetPlayerSpawnMarkers`。快照含 HP、护盾、Lives、Buff、CD、控制、是否可操作、当前修饰来源 id 等。查询**不得**改模拟。
 
 ---
 
@@ -359,9 +359,9 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 ## 8. 现在能做什么 / 先别指望什么
 
-**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环）、直线穿透弹、区域效果、Buff 与控制、四种 Brain、技能召唤 Character、Carry（抓/带/投/放）、即时/局外拾取、技能复活友方尸体、按帧刷怪表、`maxFrames` 超时。
+**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋）、直线穿透弹、区域效果、Buff 与控制、四种 Brain、技能召唤 Character、Carry（抓/带/投/放）、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源（装备换装）、按帧刷怪表、`maxFrames` 超时。
 
-**V1 写了但还没做：** 冲锋、JSON schema/样例加载器、技能资源消耗、指向技能自动改朝向、后摇取消配置、装备用 Modifier 命令、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。
+**V1 写了但还没做：** JSON schema/样例加载器、技能资源消耗、指向技能自动改朝向、后摇取消配置、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。
 
 **V1 明确不做：** 引导施法、A*、滑墙互推、跟踪弹/弹射、清波/进区刷怪、外交矩阵、可破坏地形、背包真源、FrameHash/回放、把 Godot 放进本仓。
 

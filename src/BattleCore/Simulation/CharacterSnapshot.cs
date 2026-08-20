@@ -28,4 +28,5 @@ public sealed record CharacterSnapshot(
     bool CanBeRevived,
     long? OwnerId,
     long? CarryingId,
-    long? CarriedById);
+    long? CarriedById,
+    IReadOnlyList<string> ModifierSourceIds);

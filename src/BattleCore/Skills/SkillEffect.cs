@@ -80,3 +80,8 @@ public sealed record SkillThrowCarryEffect(
     SkillTarget Target,
     Fix64 Distance)
     : SkillEffect(Frame, Target);
+
+public sealed record SkillDashEffect(
+    int Frame,
+    Fix64 Distance)
+    : SkillEffect(Frame, SkillTarget.Self);

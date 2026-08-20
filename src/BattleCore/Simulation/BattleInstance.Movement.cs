@@ -103,24 +103,25 @@ public sealed partial class BattleInstance
 
     private Fix64 FindMovementFraction(CharacterState character, FixVector2 desiredDelta)
     {
-        if (IsPositionValid(
-                character.Position + desiredDelta,
-                character.Template.Radius,
-                character.FactionId,
-                character.Template.BlocksMovement,
-                character.Id))
+        var maximumAxisDistance = Fix64.Max(
+            Fix64.Abs(desiredDelta.X),
+            Fix64.Abs(desiredDelta.Y));
+        var sampleDistanceRaw = System.Math.Max(
+            1,
+            character.Template.Radius.RawValue / 2);
+        var sampleCount = maximumAxisDistance.RawValue / sampleDistanceRaw;
+        if (maximumAxisDistance.RawValue % sampleDistanceRaw != 0)
         {
-            return Fix64.One;
+            sampleCount++;
         }
 
-        var low = Fix64.Zero;
-        var high = Fix64.One;
+        sampleCount = System.Math.Max(1, sampleCount);
+        var previous = Fix64.Zero;
         var two = Fix64.FromInt(2);
-
-        for (var iteration = 0; iteration < 16; iteration++)
+        for (long sample = 1; sample <= sampleCount; sample++)
         {
-            var middle = (low + high) / two;
-            var candidate = character.Position + (desiredDelta * middle);
+            var fraction = Fix64.FromRatio(sample, sampleCount);
+            var candidate = character.Position + (desiredDelta * fraction);
             if (IsPositionValid(
                     candidate,
                     character.Template.Radius,
@@ -128,15 +129,35 @@ public sealed partial class BattleInstance
                     character.Template.BlocksMovement,
                     character.Id))
             {
-                low = middle;
+                previous = fraction;
+                continue;
             }
-            else
+
+            var low = previous;
+            var high = fraction;
+            for (var iteration = 0; iteration < 16; iteration++)
             {
-                high = middle;
+                var middle = (low + high) / two;
+                candidate = character.Position + (desiredDelta * middle);
+                if (IsPositionValid(
+                        candidate,
+                        character.Template.Radius,
+                        character.FactionId,
+                        character.Template.BlocksMovement,
+                        character.Id))
+                {
+                    low = middle;
+                }
+                else
+                {
+                    high = middle;
+                }
             }
+
+            return low;
         }
 
-        return low;
+        return Fix64.One;
     }
 
     private bool IsPositionValid(

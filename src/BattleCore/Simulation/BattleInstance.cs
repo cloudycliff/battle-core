@@ -112,6 +112,11 @@ public sealed partial class BattleInstance
             ? character.Snapshot(_config.Bindings.MaxHp)
             : null;
 
+    public long? GetAttribute(long characterId, string attributeId) =>
+        _characters.TryGetValue(characterId, out var character)
+            ? character.Attributes.Get(attributeId)
+            : null;
+
     public IReadOnlyList<CharacterSnapshot> GetCharacters() =>
         _characters.Values
             .Select(character => character.Snapshot(_config.Bindings.MaxHp))

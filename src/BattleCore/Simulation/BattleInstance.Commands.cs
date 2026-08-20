@@ -89,6 +89,12 @@ public sealed partial class BattleInstance
             case ReviveCommand revive:
                 Revive(revive, events);
                 break;
+            case ApplyModifierSourceCommand applySource:
+                ApplyModifierSource(applySource, events);
+                break;
+            case RemoveModifierSourceCommand removeSource:
+                RemoveModifierSource(removeSource, events);
+                break;
             default:
                 Reject(command, events, "Unsupported command.");
                 break;
@@ -143,6 +149,11 @@ public sealed partial class BattleInstance
             return;
         }
 
+        if (!TryValidateModifierSources(command.ModifierSources, command, events))
+        {
+            return;
+        }
+
         var id = _nextEntityId++;
         var character = new CharacterState
         {
@@ -167,6 +178,7 @@ public sealed partial class BattleInstance
             template.Id,
             character.FactionId,
             character.Position));
+        AttachSpawnModifierSources(character, command.ModifierSources, events);
     }
 
     private void SetTarget(SetTargetCommand command, List<BattleEvent> events)
@@ -265,6 +277,8 @@ public sealed partial class BattleInstance
             RemoveBuffCommand value => value.TargetId,
             DispelBuffsCommand value => value.SourceId,
             ReviveCommand value => value.SourceId,
+            ApplyModifierSourceCommand value => value.CharacterId,
+            RemoveModifierSourceCommand value => value.CharacterId,
             _ => long.MinValue,
         };
 

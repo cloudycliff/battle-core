@@ -37,6 +37,8 @@ internal sealed class CharacterState
     public Dictionary<string, long> CooldownReadyFrames { get; } =
         new(StringComparer.Ordinal);
     public List<BuffInstance> Buffs { get; } = [];
+    public Dictionary<string, List<long>> ModifierSources { get; } =
+        new(StringComparer.Ordinal);
 
     public bool CanAct => LifeState == LifeState.Alive;
 
@@ -100,7 +102,8 @@ internal sealed class CharacterState
             CanBeRevived,
             OwnerId,
             CarryingId,
-            CarriedById);
+            CarriedById,
+            ModifierSources.Keys.ToArray());
 }
 
 internal enum MovementKind

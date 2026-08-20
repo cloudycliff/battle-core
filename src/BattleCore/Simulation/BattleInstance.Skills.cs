@@ -25,6 +25,8 @@ public sealed partial class BattleInstance
         }
 
         if (caster.HasControl(ControlType.Stun) ||
+            (skill.Effects.OfType<SkillDashEffect>().Any() &&
+             caster.HasControl(ControlType.Root)) ||
             (skill.Category == SkillCategory.Spell &&
              caster.HasControl(ControlType.Silence)) ||
             (skill.Category == SkillCategory.Weapon &&
@@ -88,6 +90,22 @@ public sealed partial class BattleInstance
             command.TargetPoint is null)
         {
             Reject(command, events, "Throw skills require a direction or point.");
+            return;
+        }
+
+        if (skill.Effects.OfType<SkillDashEffect>().Any() &&
+            (command.Direction is null || command.Direction == FixVector2.Zero) &&
+            command.TargetPoint is null &&
+            command.TargetId is null)
+        {
+            Reject(command, events, "Dash skills require a direction, point, or target.");
+            return;
+        }
+
+        if (skill.Effects.OfType<SkillDashEffect>().Any() &&
+            caster.CarriedById is not null)
+        {
+            Reject(command, events, "A carried character cannot dash.");
             return;
         }
 
@@ -221,6 +239,15 @@ public sealed partial class BattleInstance
                     effectIndex,
                     caster.Id));
                 return;
+            case SkillDashEffect dash:
+                Dash(caster, cast, dash, events);
+                events.Add(new SkillHitEvent(
+                    CurrentFrame,
+                    caster.Id,
+                    cast.Definition.Id,
+                    effectIndex,
+                    caster.Id));
+                return;
         }
 
         foreach (var target in ResolveSkillTargets(caster, cast, effect.Target))
@@ -338,6 +365,50 @@ public sealed partial class BattleInstance
                     OwnerId: effect.BindOwner ? caster.Id : null),
                 events);
         }
+    }
+
+    private void Dash(
+        CharacterState caster,
+        ActiveSkillCast cast,
+        SkillDashEffect effect,
+        List<BattleEvent> events)
+    {
+        if (caster.CarriedById is not null ||
+            caster.HasControl(ControlType.Root))
+        {
+            return;
+        }
+
+        var desiredDelta = cast.Direction is { } direction &&
+                           direction != FixVector2.Zero
+            ? direction * effect.Distance
+            : cast.TargetPoint is { } targetPoint
+                ? DeltaToward(caster.Position, targetPoint, effect.Distance)
+                : cast.ExplicitTargetId is long targetId &&
+                  _characters.TryGetValue(targetId, out var target)
+                    ? (target.Position - caster.Position).NormalizeOrZero() *
+                      effect.Distance
+                    : FixVector2.Zero;
+        if (desiredDelta == FixVector2.Zero)
+        {
+            return;
+        }
+
+        var from = caster.Position;
+        var fraction = FindMovementFraction(caster, desiredDelta);
+        var destination = from + (desiredDelta * fraction);
+        if (destination == from)
+        {
+            return;
+        }
+
+        caster.Position = destination;
+        events.Add(new CharacterMovedEvent(
+            CurrentFrame,
+            caster.Id,
+            from,
+            destination));
+        FollowCarries(events);
     }
 
     private FixVector2 ResolveSummonPosition(

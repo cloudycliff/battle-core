@@ -182,6 +182,16 @@ public sealed record PickupSpawnedEvent(
     string DefinitionId,
     FixVector2 Position) : BattleEvent(Frame);
 
+public sealed record ModifierSourceAppliedEvent(
+    long Frame,
+    long CharacterId,
+    string SourceId) : BattleEvent(Frame);
+
+public sealed record ModifierSourceRemovedEvent(
+    long Frame,
+    long CharacterId,
+    string SourceId) : BattleEvent(Frame);
+
 public sealed record PickedUpEvent(
     long Frame,
     long PickupId,
