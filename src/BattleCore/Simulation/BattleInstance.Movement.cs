@@ -62,6 +62,8 @@ public sealed partial class BattleInstance
                 }
             }
         }
+
+        FollowCarries(events);
     }
     private FixVector2 GetDesiredDelta(CharacterState character)
     {
@@ -163,6 +165,7 @@ public sealed partial class BattleInstance
         {
             if (other.Id == excludedCharacterId ||
                 other.LifeState == LifeState.Dead ||
+                other.CarriedById is not null ||
                 !other.Template.BlocksMovement ||
                 other.FactionId == factionId)
             {

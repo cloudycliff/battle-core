@@ -15,6 +15,11 @@ public sealed record SpawnCharacterCommand(
     string? BrainId = null,
     long? OwnerId = null) : BattleCommand(Frame);
 
+public sealed record SpawnPickupCommand(
+    long Frame,
+    string DefinitionId,
+    FixVector2 Position) : BattleCommand(Frame);
+
 public sealed record MoveDirectionCommand(
     long Frame,
     long CharacterId,

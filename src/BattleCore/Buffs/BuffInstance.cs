@@ -9,6 +9,9 @@ internal sealed class BuffInstance
     public required long ExpiryFrame { get; set; }
     public required int Stacks { get; set; }
 
+    public bool PreventsRevive =>
+        Definition.Effects.OfType<PreventReviveBuffEffect>().Any();
+
     public List<long> ModifierIds { get; } = [];
     public Dictionary<int, long> NextPeriodicFrames { get; } = [];
 }

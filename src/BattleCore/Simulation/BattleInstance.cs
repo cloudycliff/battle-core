@@ -22,6 +22,7 @@ public sealed partial class BattleInstance
     private readonly SortedDictionary<long, CharacterState> _characters = [];
     private readonly SortedDictionary<long, ProjectileState> _projectiles = [];
     private readonly SortedDictionary<long, AreaEffectState> _areaEffects = [];
+    private readonly SortedDictionary<long, PickupState> _pickups = [];
     private readonly List<BattleEvent> _deferredEvents = [];
     private readonly List<PendingCombatEffect> _pendingCombat = [];
     private readonly HashSet<int> _wipedFactions = [];
@@ -94,6 +95,7 @@ public sealed partial class BattleInstance
         AdvanceBuffs(events);
         ResolveCombat(events);
         ResolveLife(events);
+        ResolvePickups(events);
 
         if (!_timeoutEmitted && CurrentFrame + 1 >= _maxFrames)
         {
@@ -134,6 +136,16 @@ public sealed partial class BattleInstance
                 area.Position,
                 area.Definition.Radius,
                 area.FollowTargetId))
+            .ToArray();
+
+    public IReadOnlyList<PickupSnapshot> GetPickups() =>
+        _pickups.Values
+            .Select(pickup => new PickupSnapshot(
+                pickup.Id,
+                pickup.Definition.Id,
+                pickup.Definition.Kind,
+                pickup.Position,
+                pickup.Definition.Radius))
             .ToArray();
 
     public IReadOnlyList<SpawnPoint> GetSpawnPoints() => _map.SpawnPoints;

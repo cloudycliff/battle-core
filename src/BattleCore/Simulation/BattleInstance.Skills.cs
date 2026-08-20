@@ -1,4 +1,5 @@
 using BattleCore.Buffs;
+using BattleCore.Combat;
 using BattleCore.Math;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
@@ -48,11 +49,8 @@ public sealed partial class BattleInstance
 
         if (skill.Effects.Any(effect =>
                 effect.Target.Kind == SkillTargetKind.ExplicitTarget) &&
-            (command.TargetId is not long targetId ||
-             !_characters.TryGetValue(targetId, out var target) ||
-             !target.IsSelectable))
+            !HasValidExplicitTarget(command, skill, caster, events))
         {
-            Reject(command, events, "Skill requires an available explicit target.");
             return;
         }
 
@@ -85,6 +83,14 @@ public sealed partial class BattleInstance
             return;
         }
 
+        if (skill.Effects.OfType<SkillThrowCarryEffect>().Any() &&
+            (command.Direction is null || command.Direction == FixVector2.Zero) &&
+            command.TargetPoint is null)
+        {
+            Reject(command, events, "Throw skills require a direction or point.");
+            return;
+        }
+
         var cooldownReadyFrame = CurrentFrame + skill.CooldownFrames;
         caster.CooldownReadyFrames[skill.Id] = cooldownReadyFrame;
         caster.ActiveSkill = new ActiveSkillCast
@@ -102,9 +108,46 @@ public sealed partial class BattleInstance
             cooldownReadyFrame));
     }
 
+    private bool HasValidExplicitTarget(
+        CastSkillCommand command,
+        SkillDefinition skill,
+        CharacterState caster,
+        List<BattleEvent> events)
+    {
+        if (command.TargetId is not long targetId ||
+            !_characters.TryGetValue(targetId, out var target))
+        {
+            Reject(command, events, "Skill requires an available explicit target.");
+            return false;
+        }
+
+        var explicitTargets = skill.Effects
+            .Where(effect => effect.Target.Kind == SkillTargetKind.ExplicitTarget)
+            .Select(effect => effect.Target)
+            .ToArray();
+        var corpsesOnly = explicitTargets.All(item => item.CorpsesOnly);
+        var matchesRelation = explicitTargets.Any(item =>
+            IsRelationMatch(caster, target, item.Relation));
+        var valid = corpsesOnly
+            ? target.IsReviveTarget && matchesRelation
+            : target.IsSelectable;
+        if (!valid)
+        {
+            Reject(
+                command,
+                events,
+                corpsesOnly
+                    ? "Skill requires an eligible dead ally."
+                    : "Skill requires an available explicit target.");
+            return false;
+        }
+
+        return true;
+    }
+
     private void AdvanceSkills(List<BattleEvent> events)
     {
-        foreach (var caster in _characters.Values)
+        foreach (var caster in _characters.Values.ToArray())
         {
             var cast = caster.ActiveSkill;
             if (cast is null || !caster.CanAct)
@@ -156,6 +199,27 @@ public sealed partial class BattleInstance
                 return;
             case SkillSpawnAreaEffectEffect spawnArea:
                 SpawnAreaEffectFromSkill(caster, cast, spawnArea, effectIndex, events);
+                return;
+            case SkillSpawnCharacterEffect spawnCharacter:
+                SpawnCharactersFromSkill(caster, cast, spawnCharacter, effectIndex, events);
+                return;
+            case SkillDropCarryEffect:
+                DropCarry(caster, events);
+                events.Add(new SkillHitEvent(
+                    CurrentFrame,
+                    caster.Id,
+                    cast.Definition.Id,
+                    effectIndex,
+                    caster.Id));
+                return;
+            case SkillThrowCarryEffect throwCarry:
+                ThrowCarry(caster, cast, throwCarry, events);
+                events.Add(new SkillHitEvent(
+                    CurrentFrame,
+                    caster.Id,
+                    cast.Definition.Id,
+                    effectIndex,
+                    caster.Id));
                 return;
         }
 
@@ -223,9 +287,75 @@ public sealed partial class BattleInstance
                             buff.BuffId),
                         events);
                     break;
+                case SkillStartCarryEffect:
+                    TryStartCarry(caster, target, events);
+                    break;
+                case SkillReviveEffect:
+                    TryRevive(caster, target, events);
+                    break;
             }
         }
     }
+
+    private void SpawnCharactersFromSkill(
+        CharacterState caster,
+        ActiveSkillCast cast,
+        SkillSpawnCharacterEffect effect,
+        int effectIndex,
+        List<BattleEvent> events)
+    {
+        if (!_config.CharacterTemplates.TryGetValue(effect.TemplateId, out var template))
+        {
+            return;
+        }
+
+        var position = ResolveSummonPosition(caster, cast, effect.Target);
+        events.Add(new SkillHitEvent(
+            CurrentFrame,
+            caster.Id,
+            cast.Definition.Id,
+            effectIndex,
+            caster.Id));
+
+        for (var index = 0; index < effect.Count; index++)
+        {
+            if (!IsPositionValid(
+                    position,
+                    template.Radius,
+                    caster.FactionId,
+                    template.BlocksMovement))
+            {
+                continue;
+            }
+
+            Spawn(
+                new SpawnCharacterCommand(
+                    CurrentFrame,
+                    effect.TemplateId,
+                    caster.FactionId,
+                    position,
+                    BrainId: effect.BrainId,
+                    OwnerId: effect.BindOwner ? caster.Id : null),
+                events);
+        }
+    }
+
+    private FixVector2 ResolveSummonPosition(
+        CharacterState caster,
+        ActiveSkillCast cast,
+        SkillTarget target) =>
+        target.Kind switch
+        {
+            SkillTargetKind.CircleAtPoint or SkillTargetKind.RingAtPoint
+                when cast.TargetPoint is { } point => point,
+            SkillTargetKind.ExplicitTarget when cast.ExplicitTargetId is long targetId &&
+                _characters.TryGetValue(targetId, out var targetCharacter) =>
+                targetCharacter.Position,
+            SkillTargetKind.CurrentTarget when caster.CurrentTargetId is long currentId &&
+                _characters.TryGetValue(currentId, out var current) => current.Position,
+            _ => caster.Position,
+        };
+
     private IReadOnlyList<CharacterState> ResolveSkillTargets(
         CharacterState caster,
         ActiveSkillCast cast,
@@ -234,21 +364,27 @@ public sealed partial class BattleInstance
         IEnumerable<CharacterState> candidates = target.Kind switch
         {
             SkillTargetKind.Self => [caster],
-            SkillTargetKind.ExplicitTarget => ResolveOne(cast.ExplicitTargetId),
-            SkillTargetKind.CurrentTarget => ResolveOne(caster.CurrentTargetId),
-            SkillTargetKind.CircleAtPoint => ResolveCircle(cast.TargetPoint, target.Radius),
+            SkillTargetKind.ExplicitTarget => ResolveOne(cast.ExplicitTargetId, target.CorpsesOnly),
+            SkillTargetKind.CurrentTarget => ResolveOne(caster.CurrentTargetId, target.CorpsesOnly),
+            SkillTargetKind.CircleAtPoint => ResolveCircle(
+                cast.TargetPoint,
+                target.Radius,
+                target.CorpsesOnly),
             SkillTargetKind.CircleAtCaster => ResolveCircle(
                 caster.Position,
-                target.Radius),
+                target.Radius,
+                target.CorpsesOnly),
             SkillTargetKind.FanAtCaster => ResolveFan(
                 caster,
                 cast.Direction,
                 target.Radius,
-                target.MinimumDot),
+                target.MinimumDot,
+                target.CorpsesOnly),
             SkillTargetKind.RingAtPoint => ResolveRing(
                 cast.TargetPoint,
                 target.InnerRadius,
-                target.Radius),
+                target.Radius,
+                target.CorpsesOnly),
             _ => [],
         };
 
@@ -258,11 +394,11 @@ public sealed partial class BattleInstance
             .ToArray();
     }
 
-    private IEnumerable<CharacterState> ResolveOne(long? characterId)
+    private IEnumerable<CharacterState> ResolveOne(long? characterId, bool corpsesOnly)
     {
         if (characterId is long id &&
             _characters.TryGetValue(id, out var character) &&
-            character.IsSelectable)
+            MatchesTargetFilter(character, corpsesOnly))
         {
             yield return character;
         }
@@ -270,7 +406,8 @@ public sealed partial class BattleInstance
 
     private IEnumerable<CharacterState> ResolveCircle(
         FixVector2? point,
-        Fix64 radius)
+        Fix64 radius,
+        bool corpsesOnly)
     {
         if (point is not FixVector2 center)
         {
@@ -279,7 +416,7 @@ public sealed partial class BattleInstance
 
         foreach (var character in _characters.Values)
         {
-            if (!character.IsSelectable)
+            if (!MatchesTargetFilter(character, corpsesOnly))
             {
                 continue;
             }
@@ -297,14 +434,15 @@ public sealed partial class BattleInstance
         CharacterState caster,
         FixVector2? direction,
         Fix64 radius,
-        Fix64 minimumDot)
+        Fix64 minimumDot,
+        bool corpsesOnly)
     {
         if (direction is not FixVector2 facing || facing == FixVector2.Zero)
         {
             yield break;
         }
 
-        foreach (var character in ResolveCircle(caster.Position, radius))
+        foreach (var character in ResolveCircle(caster.Position, radius, corpsesOnly))
         {
             var offset = character.Position - caster.Position;
             if (offset == FixVector2.Zero)
@@ -323,14 +461,15 @@ public sealed partial class BattleInstance
     private IEnumerable<CharacterState> ResolveRing(
         FixVector2? point,
         Fix64 innerRadius,
-        Fix64 outerRadius)
+        Fix64 outerRadius,
+        bool corpsesOnly)
     {
         if (point is not FixVector2 center)
         {
             yield break;
         }
 
-        foreach (var character in ResolveCircle(center, outerRadius))
+        foreach (var character in ResolveCircle(center, outerRadius, corpsesOnly))
         {
             var innerExclusionRadius = Fix64.Max(
                 Fix64.Zero,
@@ -342,6 +481,11 @@ public sealed partial class BattleInstance
             }
         }
     }
+
+    private static bool MatchesTargetFilter(CharacterState character, bool corpsesOnly) =>
+        corpsesOnly
+            ? character.IsReviveTarget
+            : character.IsSelectable;
 
     private static bool IsRelationMatch(
         CharacterState caster,

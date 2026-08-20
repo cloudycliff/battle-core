@@ -251,7 +251,7 @@ public sealed partial class BattleInstance
             }
 
             events.Add(new AreaEffectTickedEvent(CurrentFrame, area.Id));
-            foreach (var target in ResolveCircle(area.Position, area.Definition.Radius)
+            foreach (var target in ResolveCircle(area.Position, area.Definition.Radius, false)
                          .Where(candidate =>
                              IsRelationMatch(source, candidate, area.Definition.Relation))
                          .OrderBy(candidate => candidate.Id))

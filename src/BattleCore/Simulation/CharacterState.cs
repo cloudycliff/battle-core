@@ -22,6 +22,9 @@ internal sealed class CharacterState
     public required int Lives { get; set; }
     public BrainDefinition? Brain { get; init; }
     public long? OwnerId { get; init; }
+    public long? CarryingId { get; set; }
+    public long? CarriedById { get; set; }
+    public FixVector2 CarryOffset { get; set; }
 
     public Facing Facing { get; set; } = new(0);
     public long? CurrentTargetId { get; set; }
@@ -39,11 +42,19 @@ internal sealed class CharacterState
 
     public bool CanMove =>
         CanAct &&
+        CarriedById is null &&
         !HasControl(ControlType.Stun) &&
         !HasControl(ControlType.Root);
 
     public bool IsSelectable =>
         LifeState == LifeState.Alive && Template.Targetable;
+
+    public bool CanBeRevived =>
+        Template.CanBeRevived &&
+        !Buffs.Any(buff => buff.PreventsRevive);
+
+    public bool IsReviveTarget =>
+        LifeState == LifeState.Dead && CanBeRevived;
 
     public long ShieldTotal => Shields.Sum(layer => layer.Amount);
 
@@ -85,7 +96,11 @@ internal sealed class CharacterState
             PlayerControlled,
             IsSelectable,
             Template.Damageable && CanAct,
-            Template.BlocksMovement);
+            Template.BlocksMovement,
+            CanBeRevived,
+            OwnerId,
+            CarryingId,
+            CarriedById);
 }
 
 internal enum MovementKind

@@ -116,7 +116,9 @@ public sealed class CombatPipelineTests
     public void ReviveCommand_RaisesDeadAllyInCorpseWindow()
     {
         var battle = TestBattleFactory.CreateBattle(
-            TestBattleFactory.CreateConfig(corpseDurationFrames: 10));
+            TestBattleFactory.CreateConfig(
+                corpseDurationFrames: 10,
+                canBeRevived: true));
         battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
         battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(8, 2)));
         battle.Tick();

@@ -15,6 +15,7 @@ public sealed partial class BattleInstance
         {
             if (actor.PlayerControlled ||
                 !actor.CanAct ||
+                actor.CarriedById is not null ||
                 actor.Brain is not { } brain)
             {
                 continue;

@@ -303,5 +303,10 @@ public sealed partial class BattleInstance
                 target.Id,
                 cast.Definition.Id));
         }
+
+        if (target.Controls.Count > 0 && target.CarryingId is not null)
+        {
+            DropCarry(target, events);
+        }
     }
 }

@@ -4,6 +4,7 @@ using BattleCore.Brains;
 using BattleCore.Buffs;
 using BattleCore.Effects;
 using BattleCore.Math;
+using BattleCore.Pickups;
 using BattleCore.Projectiles;
 using BattleCore.Skills;
 
@@ -20,6 +21,7 @@ public sealed class BattleConfig
         IEnumerable<ProjectileDefinition>? projectileDefinitions = null,
         IEnumerable<AreaEffectDefinition>? areaEffectDefinitions = null,
         IEnumerable<BrainDefinition>? brainDefinitions = null,
+        IEnumerable<PickupDefinition>? pickupDefinitions = null,
         long defenseK = 100,
         int maximumMitigation = 8_000,
         long minimumDamage = 1,
@@ -44,6 +46,8 @@ public sealed class BattleConfig
             (areaEffectDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
         BrainDefinitions = new ReadOnlyDictionary<string, BrainDefinition>(
             (brainDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
+        PickupDefinitions = new ReadOnlyDictionary<string, PickupDefinition>(
+            (pickupDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
         DefenseK = defenseK;
         MaximumMitigation = maximumMitigation;
         MinimumDamage = minimumDamage;
@@ -61,6 +65,7 @@ public sealed class BattleConfig
     public IReadOnlyDictionary<string, ProjectileDefinition> ProjectileDefinitions { get; }
     public IReadOnlyDictionary<string, AreaEffectDefinition> AreaEffectDefinitions { get; }
     public IReadOnlyDictionary<string, BrainDefinition> BrainDefinitions { get; }
+    public IReadOnlyDictionary<string, PickupDefinition> PickupDefinitions { get; }
     public long DefenseK { get; }
     public int MaximumMitigation { get; }
     public long MinimumDamage { get; }
@@ -173,6 +178,21 @@ public sealed class BattleConfig
                     errors.Add($"Skill '{skill.Id}' references unknown area effect '{areaEffectId}'.");
                 }
             }
+
+            foreach (var summon in skill.Effects.OfType<SkillSpawnCharacterEffect>())
+            {
+                if (!CharacterTemplates.ContainsKey(summon.TemplateId))
+                {
+                    errors.Add(
+                        $"Skill '{skill.Id}' references unknown character template '{summon.TemplateId}'.");
+                }
+
+                if (summon.BrainId is string brainId &&
+                    !BrainDefinitions.ContainsKey(brainId))
+                {
+                    errors.Add($"Skill '{skill.Id}' references unknown brain '{brainId}'.");
+                }
+            }
         }
 
         ValidateHitCatalog("Projectile", ProjectileDefinitions.ToDictionary(
@@ -194,6 +214,30 @@ public sealed class BattleConfig
                 {
                     errors.Add(
                         $"Buff '{buff.Id}' references undeclared attribute '{attributeId}'.");
+                }
+            }
+        }
+
+        foreach (var pickup in PickupDefinitions.Values)
+        {
+            foreach (var attributeId in pickup.Effects
+                         .Select(GetPickupAttributeId)
+                         .Where(attributeId => attributeId is not null))
+            {
+                if (!AttributeIds.Contains(attributeId!))
+                {
+                    errors.Add(
+                        $"Pickup '{pickup.Id}' references undeclared attribute '{attributeId}'.");
+                }
+            }
+
+            foreach (var buffId in pickup.Effects
+                         .OfType<PickupApplyBuffEffect>()
+                         .Select(effect => effect.BuffId))
+            {
+                if (!BuffDefinitions.ContainsKey(buffId))
+                {
+                    errors.Add($"Pickup '{pickup.Id}' references unknown buff '{buffId}'.");
                 }
             }
         }
@@ -274,6 +318,14 @@ public sealed class BattleConfig
             }
         }
     }
+
+    private static string? GetPickupAttributeId(PickupEffect effect) =>
+        effect switch
+        {
+            PickupHealEffect heal => heal.AttributeId,
+            PickupAttributeEffect attribute => attribute.AttributeId,
+            _ => null,
+        };
 
     private static string? GetHitAttributeId(HitEffect effect) =>
         effect switch

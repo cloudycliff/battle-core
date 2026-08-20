@@ -24,4 +24,8 @@ public sealed record CharacterSnapshot(
     bool PlayerControlled,
     bool Targetable,
     bool Damageable,
-    bool BlocksMovement);
+    bool BlocksMovement,
+    bool CanBeRevived,
+    long? OwnerId,
+    long? CarryingId,
+    long? CarriedById);

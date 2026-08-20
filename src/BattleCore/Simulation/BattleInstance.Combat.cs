@@ -50,13 +50,26 @@ public sealed partial class BattleInstance
             return;
         }
 
-        if (target.LifeState != LifeState.Dead || source.FactionId != target.FactionId)
+        if (!TryRevive(source, target, events))
         {
-            Reject(command, events, "Revive requires a dead ally in the corpse window.");
-            return;
+            Reject(command, events, "Revive requires an eligible dead ally.");
+        }
+    }
+
+    private bool TryRevive(
+        CharacterState source,
+        CharacterState target,
+        List<BattleEvent> events)
+    {
+        if (!source.CanAct ||
+            !target.IsReviveTarget ||
+            source.FactionId != target.FactionId)
+        {
+            return false;
         }
 
         StandUp(target, events);
+        return true;
     }
     private void ResolveCombat(List<BattleEvent> events)
     {
@@ -273,7 +286,9 @@ public sealed partial class BattleInstance
 
     private void Kill(CharacterState target, long sourceId, List<BattleEvent> events)
     {
-        foreach (var buff in target.Buffs.ToArray())
+        foreach (var buff in target.Buffs
+                     .Where(buff => !buff.PreventsRevive)
+                     .ToArray())
         {
             RemoveBuffInstance(target, buff, events);
         }
@@ -291,6 +306,7 @@ public sealed partial class BattleInstance
         target.Movement = MovementIntent.None;
         target.CurrentTargetId = null;
         target.Shields.Clear();
+        ReleaseCarryInvolving(target, events);
 
         if (target.Lives > 0)
         {
@@ -305,7 +321,9 @@ public sealed partial class BattleInstance
 
         target.LifeState = LifeState.Dead;
         target.ReviveAtFrame = null;
-        target.DespawnAtFrame = CurrentFrame + _config.CorpseDurationFrames;
+        target.DespawnAtFrame = target.Template.CanBeRevived
+            ? null
+            : CurrentFrame + _config.CorpseDurationFrames;
         events.Add(new DiedEvent(CurrentFrame, target.Id, sourceId));
         MaybeEmitFactionWiped(target.FactionId, events);
     }
@@ -343,7 +361,8 @@ public sealed partial class BattleInstance
         foreach (var character in _characters.Values)
         {
             if (character.CurrentTargetId is long targetId &&
-                (!_characters.TryGetValue(targetId, out var target) || !target.IsSelectable))
+                (!_characters.TryGetValue(targetId, out var target) ||
+                 (!target.IsSelectable && !target.IsReviveTarget)))
             {
                 character.CurrentTargetId = null;
                 events.Add(new TargetChangedEvent(CurrentFrame, character.Id, null));

@@ -1,5 +1,6 @@
 using BattleCore.Attributes;
 using BattleCore.Brains;
+using BattleCore.Combat;
 using BattleCore.Randomness;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
@@ -30,6 +31,9 @@ public sealed partial class BattleInstance
         {
             case SpawnCharacterCommand spawn:
                 Spawn(spawn, events);
+                break;
+            case SpawnPickupCommand spawnPickup:
+                SpawnPickup(spawnPickup, events);
                 break;
             case MoveDirectionCommand move:
                 WithLiving(move.CharacterId, command, events, character =>
@@ -170,7 +174,8 @@ public sealed partial class BattleInstance
         WithLiving(command.CharacterId, command, events, character =>
         {
             if (command.TargetId is long targetId &&
-                (!_characters.TryGetValue(targetId, out var target) || !target.IsSelectable))
+                (!_characters.TryGetValue(targetId, out var target) ||
+                 (!target.IsSelectable && !target.IsReviveTarget)))
             {
                 Reject(command, events, $"Target '{targetId}' is unavailable.");
                 return;

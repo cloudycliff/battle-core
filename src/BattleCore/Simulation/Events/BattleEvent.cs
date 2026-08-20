@@ -1,5 +1,6 @@
 using BattleCore.Combat;
 using BattleCore.Math;
+using BattleCore.Pickups;
 
 namespace BattleCore.Simulation.Events;
 
@@ -157,3 +158,33 @@ public sealed record AreaEffectTickedEvent(
 public sealed record AreaEffectDespawnedEvent(
     long Frame,
     long AreaEffectId) : BattleEvent(Frame);
+
+public sealed record CarryStartedEvent(
+    long Frame,
+    long CarrierId,
+    long CarriedId) : BattleEvent(Frame);
+
+public sealed record CharacterThrownEvent(
+    long Frame,
+    long CarrierId,
+    long CarriedId,
+    FixVector2 From,
+    FixVector2 To) : BattleEvent(Frame);
+
+public sealed record CarryEndedEvent(
+    long Frame,
+    long CarrierId,
+    long CarriedId) : BattleEvent(Frame);
+
+public sealed record PickupSpawnedEvent(
+    long Frame,
+    long PickupId,
+    string DefinitionId,
+    FixVector2 Position) : BattleEvent(Frame);
+
+public sealed record PickedUpEvent(
+    long Frame,
+    long PickupId,
+    string DefinitionId,
+    long CharacterId,
+    PickupKind Kind) : BattleEvent(Frame);

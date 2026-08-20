@@ -37,3 +37,5 @@ public enum ControlType
 }
 
 public sealed record ControlBuffEffect(ControlType Control) : BuffEffect;
+
+public sealed record PreventReviveBuffEffect : BuffEffect;

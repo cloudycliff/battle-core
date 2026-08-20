@@ -14,7 +14,8 @@ public sealed class CharacterTemplate
         bool blocksMovement = true,
         int lives = 0,
         IEnumerable<string>? skillIds = null,
-        string? brainId = null)
+        string? brainId = null,
+        bool canBeRevived = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(baseAttributes);
@@ -28,6 +29,7 @@ public sealed class CharacterTemplate
         Damageable = damageable;
         BlocksMovement = blocksMovement;
         Lives = lives;
+        CanBeRevived = canBeRevived;
         SkillIds = (skillIds ?? []).ToArray();
         BrainId = brainId;
     }
@@ -39,6 +41,7 @@ public sealed class CharacterTemplate
     public bool Damageable { get; }
     public bool BlocksMovement { get; }
     public int Lives { get; }
+    public bool CanBeRevived { get; }
     public IReadOnlyList<string> SkillIds { get; }
     public string? BrainId { get; }
 }

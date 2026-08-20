@@ -26,7 +26,8 @@ public sealed record SkillTarget(
     TargetRelation Relation,
     Fix64 Radius,
     Fix64 InnerRadius = default,
-    Fix64 MinimumDot = default)
+    Fix64 MinimumDot = default,
+    bool CorpsesOnly = false)
 {
     public static SkillTarget Self { get; } =
         new(SkillTargetKind.Self, TargetRelation.Self, Fix64.Zero);
@@ -34,6 +35,15 @@ public sealed record SkillTarget(
     public static SkillTarget ExplicitEnemy { get; } =
         new(SkillTargetKind.ExplicitTarget, TargetRelation.Enemies, Fix64.Zero);
 
+    public static SkillTarget ExplicitAlly { get; } =
+        new(SkillTargetKind.ExplicitTarget, TargetRelation.Allies, Fix64.Zero);
+
+    public static SkillTarget ExplicitDeadAlly { get; } =
+        new(SkillTargetKind.ExplicitTarget, TargetRelation.Allies, Fix64.Zero, CorpsesOnly: true);
+
     public static SkillTarget CurrentEnemy { get; } =
         new(SkillTargetKind.CurrentTarget, TargetRelation.Enemies, Fix64.Zero);
+
+    public static SkillTarget CurrentDeadAlly { get; } =
+        new(SkillTargetKind.CurrentTarget, TargetRelation.Allies, Fix64.Zero, CorpsesOnly: true);
 }

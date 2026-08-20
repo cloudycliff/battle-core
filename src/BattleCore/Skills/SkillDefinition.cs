@@ -56,7 +56,9 @@ public sealed class SkillDefinition
                     $"Skill '{Id}' effect frame {effect.Frame} must be within [0, {DurationFrames - 1}].");
             }
 
-            if (effect is SkillSpawnProjectileEffect or SkillSpawnAreaEffectEffect)
+            if (effect is SkillSpawnProjectileEffect
+                or SkillSpawnAreaEffectEffect
+                or SkillSpawnCharacterEffect)
             {
                 continue;
             }
@@ -93,6 +95,20 @@ public sealed class SkillDefinition
             {
                 throw new ArgumentException(
                     $"Skill '{Id}' shield amount must be positive and duration non-negative.");
+            }
+
+            if (effect is SkillSpawnCharacterEffect summon &&
+                (string.IsNullOrWhiteSpace(summon.TemplateId) || summon.Count <= 0))
+            {
+                throw new ArgumentException(
+                    $"Skill '{Id}' summon template must be set and count positive.");
+            }
+
+            if (effect is SkillThrowCarryEffect throwCarry &&
+                throwCarry.Distance <= Fix64.Zero)
+            {
+                throw new ArgumentException(
+                    $"Skill '{Id}' throw distance must be positive.");
             }
         }
     }

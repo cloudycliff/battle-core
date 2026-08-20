@@ -21,7 +21,8 @@ internal static class TestBattleFactory
         bool blocksMovement = true,
         int lives = 0,
         int corpseDurationFrames = 30,
-        int reviveDelayFrames = 2)
+        int reviveDelayFrames = 2,
+        bool canBeRevived = false)
     {
         var attributes = Bindings.AllIds().Concat(["attack"]).ToArray();
         var values = attributes.ToDictionary(id => id, _ => 0L, StringComparer.Ordinal);
@@ -35,7 +36,8 @@ internal static class TestBattleFactory
             radius ?? Fix64.FromRatio(1, 2),
             values,
             blocksMovement: blocksMovement,
-            lives: lives);
+            lives: lives,
+            canBeRevived: canBeRevived);
 
         return new BattleConfig(
             attributes,

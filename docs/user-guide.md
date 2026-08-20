@@ -222,7 +222,7 @@ Brain 看到的是「本帧外部命令已经落地、本帧移动还没发生�
 
 | 对象 | 职责 |
 |------|------|
-| `BattleConfig` | 属性声明、战斗绑定、角色模板、技能、Buff、弹体、区域、Brain、防御 K / 最大减免 / 保底伤害、尸体与复活延迟 |
+| `BattleConfig` | 属性声明、战斗绑定、角色模板、技能、Buff、弹体、区域、Brain、防御 K / 最大减免 / 保底伤害、默认尸体时长与复活延迟 |
 | `MapConfig` | 矩形边界、地形 AABB、刷怪点、玩家出生标记 |
 | `SpawnTable` | 刷谁、哪一帧、几只、可选覆盖 Brain；由地图上的点引用 |
 
@@ -259,26 +259,37 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 - `Radius`：占位圆（米）。  
 - `Targetable` / `Damageable`：选敌与能否受伤。  
 - `BlocksMovement`：是否参与敌对硬挡；商人/待救通常 `false`。同阵营可重叠。  
-- `Lives`：致死时若 > 0 则扣次数并倒计时站起，否则进入尸体窗口后消失。  
+- `Lives`：致死时若 > 0 则扣次数并倒计时站起，否则进入 Dead。
+- `CanBeRevived`：默认 `false`。为 `false` 时 Dead 尸体按 `BattleConfig.CorpseDurationFrames` 消失；为 `true` 时覆盖该计时，尸体一直保留到复活。
 - `SkillIds`：该模板能放的技能，**顺序 = Brain 进攻技能优先级**。  
 - `BrainId`：可选；生成时可用命令覆盖。
 
 玩家是否接受你灌的操作，看 Spawn 时的 `PlayerControlled`，**和从哪刷出来无关**。刷怪表永远刷 `PlayerControlled = false`。开局玩家约定用外部 `SpawnCharacterCommand`；`PlayerSpawnMarker` 只给查询，核不会自动刷玩家。
 
-召唤物也是 Character。`OwnerId` 给 `FollowOwner` 用（技能召唤尚未实现，可先用外部 Spawn 带上 `OwnerId`）。
+召唤物也是 Character。技能效果 `SkillSpawnCharacterEffect` 会按选敌位置生成（默认在施法者处），继承施法者阵营，可选 `BindOwner`（默认 true）和 `BrainId`。`FollowOwner` 用 `OwnerId` 跟随主人。同阵营可重叠，所以在自己脚下召唤通常能成功；点在地形或敌对占位上则会跳过。
 
 ### 5.3 技能
 
 时间轴：`durationFrames` 内，效果写在 `Frame`（`0 .. duration-1`）。无引导/按住引导。
 
-选敌：自身、显式目标、当前软锁、点圆、自身圆、自身扇、点环。过滤：敌/友/自身/全部。扇形需要非零 `Direction`；点圆/环需要地图内 `TargetPoint`。
+选敌：自身、显式目标、当前软锁、点圆、自身圆、自身扇、点环。过滤：敌/友/自身/全部。扇形需要非零 `Direction`；点圆/环需要地图内 `TargetPoint`。普通选敌跳过 Dead 和复活倒计时。`SkillTarget.CorpsesOnly`（如 `ExplicitDeadAlly` / `CurrentDeadAlly`）只选 `CanBeRevived=true` 且当前未被禁止复活的 Dead；可对这类尸体 `SetTarget`，软锁在其可复活期间不会被清掉。复活倒计时中仍不可选。
 
-已实现的效果：伤害、治疗、护盾、上 Buff、创建投射物、创建区域。  
-尚未实现：冲锋位移、技能召唤 Character、Carry、技能侧的尸体复活选敌（`ReviveCommand` 已有）。
+已实现的效果：伤害、治疗、护盾、上 Buff、创建投射物、创建区域、召唤 Character、StartCarry / Throw / Drop、复活友方尸体（`SkillReviveEffect`）。Buff 可用 `PreventReviveBuffEffect` 禁止复活；该效果随 Buff 跨死亡保留，直到 Buff 到期或被移除。
+尚未实现：冲锋位移。
 
 冷却按逻辑帧。默认真言类会被沉默打断，武器类会被缴械打断（`SkillCategory`）。眩晕取消当前施法。`CanMoveWhileCasting` 控制前摇/后摇能否走。
 
 投射物 V1：直线匀速、碰撞圆、寿命或出界销毁、穿透次数（0 = 第一次有效命中后销毁）。无跟踪、无弹射。区域：地面或跟随目标，按间隔结算。
+
+### 5.3.1 Carry
+
+独立关系，不是 Buff。V1：仅同阵营、一名载体同时只带 1 个。被带者移动权交给载体（自己的移动命令不生效，Brain 也不跑）。移动阶段按开始携带时记下的世界坐标偏移跟随。
+
+- `SkillStartCarryEffect`：从选敌结果里抓第一个合法目标。
+- `SkillDropCarryEffect`：就地放下。
+- `SkillThrowCarryEffect`：沿施法 `Direction` 或朝 `TargetPoint` 做一次缩短位移，然后结束携带。投掷技能施法时必须带方向或点。
+
+载体受到任何控制（晕/沉默/定身/缴械）或任一方死亡时掉落。被携带者不参与占位阻挡。快照字段：`CarryingId` / `CarriedById`。事件：`CarryStartedEvent`、`CharacterThrownEvent`、`CarryEndedEvent`。
 
 ### 5.4 Buff
 
@@ -305,6 +316,15 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 清波再刷、进区域再刷：**不做**。
 
+### 5.7 拾取
+
+靠近判定在核内做，阶段在伤害与生死之后。同帧按 Pickup `entityId` 升序；每个角色每帧最多捡 1 个；同一物品重叠时取角色 `entityId` 最小者。
+
+- `PickupKind.Instant`：核立刻生效（治疗、加 Lives、永久属性修饰、Buff、护盾）。
+- `PickupKind.Stash`：只发 `PickedUpEvent` 并移除场上物体；背包、拒收、再掉出由外部处理。
+
+用 `SpawnPickupCommand` 生成。查询 `GetPickups()`。换武器不在核内解释，做成 Stash 或只靠 `PickedUpEvent.DefinitionId` 让宿主换装。
+
 ---
 
 ## 6. 输入、输出、查询
@@ -316,20 +336,18 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 移动：方向 / `MoveTo` / 停止。`MoveTo` 直线走，无寻路；被挡无法接近终点则取消。  
 朝向：`SetFacing`（受伤不转向）。全圆 1024 档。  
 目标：`SetTarget` 软锁；技能是否打它由选敌器决定。  
-战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、Buff 添加/移除/驱散、`Revive`（尸体窗口内友方）。  
-生成：`SpawnCharacter`（可 `BrainId`、`OwnerId`、覆盖初始 HP）。
+战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、Buff 添加/移除/驱散、`Revive`（允许复活且未被禁止复活的友方 Dead）。
+生成：`SpawnCharacter`（可 `BrainId`、`OwnerId`、覆盖初始 HP）、`SpawnPickup`。
 
-尚未提供：`SpawnPickup`、`ApplyModifierSource`（装备等外部修正）。
+尚未提供：`ApplyModifierSource`（装备等外部修正；即时拾取可以直接加永久属性修饰）。
 
 ### 事件
 
-生成/移动/朝向/目标、技能开始/命中/结束、弹体与区域、Buff 与控制、伤害/治疗/护盾、死亡/复活/尸体消失、阵营清空、超时、命令拒绝。
-
-Carry / 拾取相关事件还没有对应系统。
+生成/移动/朝向/目标、技能开始/命中/结束、弹体与区域、Buff 与控制、伤害/治疗/护盾、携带开始/投掷/结束、拾取生成/`PickedUp`、死亡/复活/尸体消失、阵营清空、超时、命令拒绝。
 
 ### 查询
 
-`GetCharacter` / `GetCharacters`、`GetProjectiles`、`GetAreaEffects`、`GetSpawnPoints`、`GetPlayerSpawnMarkers`。快照含 HP、护盾、Lives、Buff、CD、控制、是否可操作等。查询**不得**改模拟。
+`GetCharacter` / `GetCharacters`、`GetProjectiles`、`GetAreaEffects`、`GetPickups`、`GetSpawnPoints`、`GetPlayerSpawnMarkers`。快照含 HP、护盾、Lives、Buff、CD、控制、是否可操作等。查询**不得**改模拟。
 
 ---
 
@@ -341,9 +359,9 @@ Carry / 拾取相关事件还没有对应系统。
 
 ## 8. 现在能做什么 / 先别指望什么
 
-**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环）、直线穿透弹、区域效果、Buff 与控制、四种 Brain、按帧刷怪表、`maxFrames` 超时。
+**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环）、直线穿透弹、区域效果、Buff 与控制、四种 Brain、技能召唤 Character、Carry（抓/带/投/放）、即时/局外拾取、技能复活友方尸体、按帧刷怪表、`maxFrames` 超时。
 
-**V1 写了但还没做：** Pickup、Carry、冲锋、技能召唤、技能复活选敌器、JSON schema/样例加载器、技能资源消耗、指向技能自动改朝向、后摇取消配置、装备用 Modifier 命令、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。
+**V1 写了但还没做：** 冲锋、JSON schema/样例加载器、技能资源消耗、指向技能自动改朝向、后摇取消配置、装备用 Modifier 命令、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。
 
 **V1 明确不做：** 引导施法、A*、滑墙互推、跟踪弹/弹射、清波/进区刷怪、外交矩阵、可破坏地形、背包真源、FrameHash/回放、把 Godot 放进本仓。
 
