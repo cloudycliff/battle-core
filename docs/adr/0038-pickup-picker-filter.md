@@ -1,0 +1,3 @@
+# Pickup picker filters who may collect an item
+
+Pickup definitions declare `PickupPickerKind`: `Any` (default), `PlayerControlled`, or `SameFaction`. `SameFaction` requires `SpawnPickupCommand.FactionId` to be the loot-owning faction, typically the player's, not the dead monster's. Proximity and one-pickup-per-character-per-frame rules are unchanged; ineligible characters are skipped so a larger-id player can take gold that a smaller-id ally is standing on. Host-side reject-after-`PickedUp` was rejected because Stash already despawns on touch. Per-template id allowlists were rejected as too brittle for summons and reskins.

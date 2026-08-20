@@ -142,6 +142,54 @@ public sealed class PickupTests
     }
 
     [Fact]
+    public void PlayerControlledPicker_IgnoresNonPlayerOverlap()
+    {
+        var gold = new PickupDefinition(
+            "gold",
+            Fix64.FromInt(2),
+            PickupKind.Stash,
+            picker: PickupPickerKind.PlayerControlled);
+        var battle = CreateBattle(gold);
+        battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
+        battle.Enqueue(new SpawnCharacterCommand(
+            0,
+            "hero",
+            1,
+            Point(2, 2),
+            PlayerControlled: true));
+        battle.Enqueue(new SpawnPickupCommand(0, "gold", Point(2, 2)));
+
+        var picked = Assert.Single(battle.Tick().OfType<PickedUpEvent>());
+
+        Assert.Equal(2, picked.CharacterId);
+        Assert.Empty(battle.GetPickups());
+    }
+
+    [Fact]
+    public void SameFactionPicker_IgnoresOtherFactionAndRequiresFactionOnSpawn()
+    {
+        var orb = new PickupDefinition(
+            "orb",
+            Fix64.FromInt(2),
+            PickupKind.Instant,
+            [new PickupHealEffect(10)],
+            PickupPickerKind.SameFaction);
+        var battle = CreateBattle(orb);
+        battle.Enqueue(new SpawnPickupCommand(0, "orb", Point(2, 2)));
+        Assert.Single(battle.Tick().OfType<CommandRejectedEvent>());
+
+        battle.Enqueue(new SpawnCharacterCommand(1, "hero", 2, Point(2, 2), InitialHp: 40));
+        battle.Enqueue(new SpawnCharacterCommand(1, "hero", 1, Point(6, 2), InitialHp: 40));
+        battle.Enqueue(new SpawnPickupCommand(1, "orb", Point(4, 2), FactionId: 1));
+
+        var events = battle.Tick();
+
+        Assert.Equal(2, Assert.Single(events.OfType<PickedUpEvent>()).CharacterId);
+        Assert.Equal(40, battle.GetCharacter(1)!.CurrentHp);
+        Assert.Equal(50, battle.GetCharacter(2)!.CurrentHp);
+    }
+
+    [Fact]
     public void DeadCharacter_DoesNotPickUp()
     {
         var potion = new PickupDefinition(

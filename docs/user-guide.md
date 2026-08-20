@@ -324,6 +324,8 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 - `PickupKind.Instant`：核立刻生效（治疗、加 Lives、永久属性修饰、Buff、护盾）。
 - `PickupKind.Stash`：只发 `PickedUpEvent` 并移除场上物体；背包、拒收、再掉出由外部处理。
 
+谁能捡由 `PickupPickerKind` 决定（默认 `Any`）：`PlayerControlled` 仅主角标记；`SameFaction` 仅与 `SpawnPickupCommand.FactionId` 相同的阵营（盖拾取方阵营，不要盖死人）。靠近判定仍在核内；不合格角色直接跳过。
+
 用 `SpawnPickupCommand` 生成。查询 `GetPickups()`。换武器不在核内解释，做成 Stash 或只靠 `PickedUpEvent.DefinitionId` 让宿主换装。
 
 ---

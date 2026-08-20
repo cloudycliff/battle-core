@@ -207,6 +207,7 @@
 ### 拾取
 
 - 靠近拾取在核内判定（同帧多人按 Pickup `entityId`；每角色每帧默认 1 个）。
+- 拾取资格：`Any` / `PlayerControlled` / `SameFaction`（后者生成时必须带拾取方 `FactionId`）。
 - **即时**：核内立刻生效（属性、换武器、治疗、加 Lives 等）。
 - **局外物资**：只发 `PickedUp` 并移除场上物体；收不收、再掉出由外部再 Spawn。
 

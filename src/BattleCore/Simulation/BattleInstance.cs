@@ -150,7 +150,9 @@ public sealed partial class BattleInstance
                 pickup.Definition.Id,
                 pickup.Definition.Kind,
                 pickup.Position,
-                pickup.Definition.Radius))
+                pickup.Definition.Radius,
+                pickup.Definition.Picker,
+                pickup.FactionId))
             .ToArray();
 
     public IReadOnlyList<SpawnPoint> GetSpawnPoints() => _map.SpawnPoints;

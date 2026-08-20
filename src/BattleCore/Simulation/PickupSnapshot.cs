@@ -8,6 +8,7 @@ internal sealed class PickupState
     public required long Id { get; init; }
     public required PickupDefinition Definition { get; init; }
     public required FixVector2 Position { get; init; }
+    public int? FactionId { get; init; }
 }
 
 public sealed record PickupSnapshot(
@@ -15,4 +16,6 @@ public sealed record PickupSnapshot(
     string DefinitionId,
     PickupKind Kind,
     FixVector2 Position,
-    Fix64 Radius);
+    Fix64 Radius,
+    PickupPickerKind Picker,
+    int? FactionId);

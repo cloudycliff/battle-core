@@ -19,7 +19,7 @@
 - 直线穿透弹、地面或跟随区域
 - Buff：属性、周期伤/治、控制、Tag 免疫/替换/驱散；时长 0 = 永久
 - Brain：Idle / ChaseAttack / HoldPosition / FollowOwner
-- 即时 / Stash 拾取、按帧刷怪表、`maxFrames` 超时
+- 即时 / Stash 拾取（含拾取资格过滤）、按帧刷怪表、`maxFrames` 超时
 
 ---
 

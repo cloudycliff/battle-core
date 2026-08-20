@@ -9,6 +9,13 @@ public enum PickupKind
     Stash,
 }
 
+public enum PickupPickerKind
+{
+    Any,
+    PlayerControlled,
+    SameFaction,
+}
+
 public abstract record PickupEffect;
 
 public sealed record PickupHealEffect(
@@ -35,7 +42,8 @@ public sealed class PickupDefinition
         string id,
         Fix64 radius,
         PickupKind kind,
-        IEnumerable<PickupEffect>? effects = null)
+        IEnumerable<PickupEffect>? effects = null,
+        PickupPickerKind picker = PickupPickerKind.Any)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
@@ -47,6 +55,7 @@ public sealed class PickupDefinition
         Id = id;
         Radius = radius;
         Kind = kind;
+        Picker = picker;
         Effects = (effects ?? []).ToArray();
 
         if (Kind == PickupKind.Stash && Effects.Count > 0)
@@ -75,5 +84,6 @@ public sealed class PickupDefinition
     public string Id { get; }
     public Fix64 Radius { get; }
     public PickupKind Kind { get; }
+    public PickupPickerKind Picker { get; }
     public IReadOnlyList<PickupEffect> Effects { get; }
 }

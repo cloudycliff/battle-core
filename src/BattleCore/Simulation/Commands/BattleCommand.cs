@@ -20,7 +20,8 @@ public sealed record SpawnCharacterCommand(
 public sealed record SpawnPickupCommand(
     long Frame,
     string DefinitionId,
-    FixVector2 Position) : BattleCommand(Frame);
+    FixVector2 Position,
+    int? FactionId = null) : BattleCommand(Frame);
 
 public sealed record MoveDirectionCommand(
     long Frame,

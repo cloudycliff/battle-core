@@ -22,11 +22,19 @@ public sealed partial class BattleInstance
             return;
         }
 
+        if (definition.Picker == PickupPickerKind.SameFaction &&
+            command.FactionId is null)
+        {
+            Reject(command, events, "Same-faction pickups require a faction id.");
+            return;
+        }
+
         var pickup = new PickupState
         {
             Id = _nextEntityId++,
             Definition = definition,
             Position = command.Position,
+            FactionId = command.FactionId,
         };
         _pickups.Add(pickup.Id, pickup);
         events.Add(new PickupSpawnedEvent(
@@ -46,6 +54,7 @@ public sealed partial class BattleInstance
             {
                 if (!character.CanAct ||
                     pickedCharacters.Contains(character.Id) ||
+                    !CanPickUp(pickup, character) ||
                     !IsInPickupRange(pickup, character))
                 {
                     continue;
@@ -66,6 +75,17 @@ public sealed partial class BattleInstance
             ApplyPickup(winner, pickup, events);
         }
     }
+
+    private static bool CanPickUp(PickupState pickup, CharacterState character) =>
+        pickup.Definition.Picker switch
+        {
+            PickupPickerKind.Any => true,
+            PickupPickerKind.PlayerControlled => character.PlayerControlled,
+            PickupPickerKind.SameFaction =>
+                pickup.FactionId is int factionId &&
+                character.FactionId == factionId,
+            _ => false,
+        };
 
     private static bool IsInPickupRange(PickupState pickup, CharacterState character)
     {
