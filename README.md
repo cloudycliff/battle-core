@@ -1,29 +1,24 @@
 # Battle Core
 
-Engine-agnostic deterministic 2D combat simulation for .NET 8.
+Engine-agnostic **.NET 8** combat sim for 2D real-time ARPG. Logic only: no Godot, no Unity, no rendering, no netcode.
 
-The first implementation slice includes:
+The host owns the clock. Create a `BattleInstance`, enqueue frame-stamped commands, call `Tick()` (30 Hz, one logic frame each), and consume events.
 
-- Q16.16 fixed-point values, vectors, angles, circles, and AABBs
-- validated attribute bindings and character/map configuration
-- ordered frame-stamped commands and incremental battle events
-- character spawn, query, facing, soft targets, directional movement, and `MoveTo`
-- map, terrain, and enemy blocking rules
-- deterministic attribute modifier ordering
-- damage, heal, layered shields, death, lives auto-revive, and ally corpse revive
-- configurable skill timelines with cast duration, key-frame effects, cooldowns, and single/circle/fan/ring targeting
-- linear piercing projectiles and interval area effects spawned from skills
-- configurable Buff stacking, attribute modifiers, periodic effects, control states, immunity, replacement, and dispel
-- built-in Brains (`Idle`, `ChaseAttack`, `HoldPosition`, `FollowOwner`) that emit the same commands as players
-- time-based spawn tables referenced by map spawn points; player markers are query-only
-
-Run the test suite:
+**Start here:** [使用手册](docs/user-guide.md) (host loop, config, commands, what is / is not implemented).
 
 ```powershell
 dotnet test BattleCore.slnx --configuration Release
 ```
 
-Design:
+Add a project reference to `src/BattleCore/BattleCore.csproj` (`net8.0`).
+
+## Status
+
+Usable for a host: movement, skills, damage pipeline, buffs, linear projectiles, area effects, four built-in Brains, time-based spawn tables.
+
+Not done yet: pickups, carry/throw, dash, skill summons, JSON loaders. See the guide for the full split, including V1 non-goals.
+
+## Design (frozen)
 
 - [V1 requirements](docs/v1-requirements.md)
 - [Domain glossary](CONTEXT.md)
