@@ -1,0 +1,3 @@
+# Spawn leash for chasing brains; threat tables deferred
+
+ChaseAttack (and HoldPosition if displaced) may declare `LeashRadius`. Zero disables leash. On spawn the character stores world origin. If distance to origin exceeds the radius, Brain clears `CurrentTarget`, issues `MoveTo` origin, and does not acquire or cast until it has returned within a small arrival epsilon. `PlayerControlled` and `FollowOwner` never leash. A threat/aggro table and taunt-as-forced-retarget lock are postponed; Brain keeps nearest-hostile selection and existing `SetTarget` soft lock. Returning does not heal and does not mass-dispel; HP and buffs stay as they were so a wounded mob remains wounded after reset of position and target.

@@ -1,0 +1,3 @@
+# Damage immunity and untargetable are Buff effects, not only template flags
+
+`ImmuneToDamageBuffEffect` skips the damage pipeline (including True, periodic, and projectile hit damage) while the buff remains: no shield or HP change. The character stays selectable unless also untargetable. `UntargetableBuffEffect` makes general targeting skip the unit the same way `Template.Targetable == false` does; corpse revive targeting is unchanged. Template `Damageable` / `Targetable` stay spawn defaults. Any matching buff instance is enough. Heals, resource grants, and control buffs still apply unless blocked by existing immunity tags. Per-damage-type immunity and using defense caps as fake i-frames were rejected.

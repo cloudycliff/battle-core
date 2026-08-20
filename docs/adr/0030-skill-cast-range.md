@@ -1,0 +1,3 @@
+# CastSkill range is enforced in the core, per skill
+
+Player and Brain casts share one rule: if a skill declares a positive `Range`, `CastSkill` is rejected when the aim point or explicit/current target center is farther than that range plus the target radius. A missing or non-positive range means unlimited, so named revives and tests stay simple. Brain `AttackRange` is only a fallback when walking in to fire a skill that did not set `Range`. Range is not a host-only UI concern, because otherwise player commands and Brain commands would diverge and every host would reimplement the same reject. Self, caster-centered areas, and dashes to a direction without a point are not range-checked horizontally. Rejected casts do not start cooldown or spend resources.

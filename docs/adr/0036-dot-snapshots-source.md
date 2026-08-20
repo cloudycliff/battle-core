@@ -1,0 +1,3 @@
+# Periodic damage snapshots the source side at apply
+
+`PeriodicDamageBuffEffect` stores the caster's contribution when the buff instance is created (and when stacks refresh or increase): the evaluated `flat + attr * ratio` using the source's attributes at that frame, plus the source `DamageDealt` rate. Later ticks use those frozen integers instead of re-reading the caster. Target defense, `DamageTaken`, shields, and HP are still evaluated each tick so armor and vulnerability remain live. Crit, if enabled on the periodic effect, still rolls per tick. Periodic heals stay live (no snapshot) unless later specified. A fully frozen constant damage number that ignores target mitigation was rejected as too coarse for V1 armor/buff interactions.

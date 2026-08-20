@@ -361,7 +361,7 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 **已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋）、直线穿透弹、区域效果、Buff 与控制、四种 Brain、技能召唤 Character、Carry（抓/带/投/放）、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源（装备换装）、按帧刷怪表、`maxFrames` 超时。
 
-**V1 写了但还没做：** JSON schema/样例加载器、技能资源消耗、指向技能自动改朝向、后摇取消配置、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。
+**V1 写了但还没做：** JSON schema/样例加载器、技能资源消耗、Buff 战斗触发（已设计未编码）、指向技能自动改朝向、后摇取消配置、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。进度总表见 [status.md](status.md)。
 
 **V1 明确不做：** 引导施法、A*、滑墙互推、跟踪弹/弹射、清波/进区刷怪、外交矩阵、可破坏地形、背包真源、FrameHash/回放、把 Godot 放进本仓。
 
@@ -371,7 +371,8 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 ## 9. 还想往下看
 
-- 规则与非目标：[v1-requirements.md](v1-requirements.md)  
-- 术语：[CONTEXT.md](../CONTEXT.md)  
+- 实现进度（已做 / 已设计未编码 / 未决）：[status.md](status.md)
+- 规则与非目标：[v1-requirements.md](v1-requirements.md)
+- 术语：[CONTEXT.md](../CONTEXT.md)
 - 为什么这样切：[docs/adr/](adr/)  
 - 行为样例：`tests/BattleCore.Tests/`（比文档更接近「现在代码实际怎么跑」）

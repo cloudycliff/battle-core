@@ -155,7 +155,9 @@
 ### Buff
 
 - Tag + 叠层规则 + 效果列表。Debuff 不是另一套类型。
-- 效果：Modifier、周期伤/治、护盾、到期/叠层触发。
+- 效果：Modifier、周期伤/治、护盾、战斗触发（造成伤害 / 受到伤害 / 击杀 / 起手施法）、控制。
+- 战斗触发只扫当事双方身上的 Buff，同一起因不嵌套再触发；可配是否要求实际扣盾/HP、是否仅暴击、伤害类型、内部冷却。
+- V1 不做获得/失去 Buff 触发。以后若加：只匹配 BuffId 或 Tag；获得默认仅新 instance（Refresh 不触发）；失去默认不含死亡清理；仍不嵌套。自身死亡不应用「失去全部 Buff」表达。
 - 控制（眩晕、沉默、定身、缴械）为独立机制，不用「速度改 0」冒充。
 - 叠层：`Unique` / `Refresh` / `Stack`（有上限）/ `Independent`。
 
@@ -164,7 +166,7 @@
 - 时间轴：前摇 / 生效 / 后摇；无引导施法。
 - 选敌：自身、当前目标、指向点/方向、圆、扇形、环形等。
 - 效果过滤：敌对 / 友方 / 自身 / 全部等，按效果配置。
-- 效果：伤/治、上 Buff、创建 Projectile / AreaEffect、冲锋位移、召唤 Character、StartCarry / Throw / Drop、Revive。
+- 效果：伤/治、上 Buff、创建 Projectile / AreaEffect、冲锋位移、击退/拉人、召唤 Character、StartCarry / Throw / Drop、Revive。
 - Projectile V1：直线匀速、碰撞圆、寿命/出界销毁、穿透次数；无跟踪、无弹射。
 - 冷却与消耗以逻辑帧和整数资源计；控制可打断前摇；后摇可否取消为配置项。
 
