@@ -1,5 +1,7 @@
 using BattleCore.Attributes;
 using BattleCore.Buffs;
+using BattleCore.Combat;
+using BattleCore.Randomness;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
 
@@ -8,9 +10,13 @@ namespace BattleCore.Simulation;
 public sealed partial class BattleInstance
 {
 
-    private void ApplyBuff(ApplyBuffCommand command, List<BattleEvent> events)
+    private void ApplyBuff(
+        ApplyBuffCommand command,
+        List<BattleEvent> events,
+        CombatSourceSnapshot? snapshot = null)
     {
-        if (!TryGetLiving(command.SourceId, command, events, out _) ||
+        if (snapshot is null &&
+            !TryGetLiving(command.SourceId, command, events, out _) ||
             !TryGetCharacter(command.TargetId, command, events, out var target))
         {
             return;
@@ -64,6 +70,10 @@ public sealed partial class BattleInstance
                     return;
                 case BuffStackingRule.Refresh:
                     existing.ExpiryFrame = BuffExpiry(definition);
+                    existing.CombatSnapshot = CaptureBuffCombatSnapshot(
+                        command.SourceId,
+                        existing.Rng,
+                        snapshot) ?? existing.CombatSnapshot;
                     events.Add(new BuffStackChangedEvent(
                         CurrentFrame,
                         target.Id,
@@ -76,6 +86,10 @@ public sealed partial class BattleInstance
                         definition.MaxStacks,
                         existing.Stacks + 1);
                     existing.ExpiryFrame = BuffExpiry(definition);
+                    existing.CombatSnapshot = CaptureBuffCombatSnapshot(
+                        command.SourceId,
+                        existing.Rng,
+                        snapshot) ?? existing.CombatSnapshot;
                     RefreshBuffModifiers(target, existing);
                     events.Add(new BuffStackChangedEvent(
                         CurrentFrame,
@@ -90,14 +104,18 @@ public sealed partial class BattleInstance
             return;
         }
 
+        var instanceId = _nextBuffId++;
+        var rng = DeterministicRng.Derive(Seed, instanceId, BuffStream);
         var instance = new BuffInstance
         {
-            InstanceId = _nextBuffId++,
+            InstanceId = instanceId,
             Definition = definition,
             SourceId = command.SourceId,
             AppliedFrame = CurrentFrame,
             ExpiryFrame = BuffExpiry(definition),
             Stacks = 1,
+            Rng = rng,
+            CombatSnapshot = CaptureBuffCombatSnapshot(command.SourceId, rng, snapshot),
         };
 
         for (var index = 0; index < definition.Effects.Count; index++)
@@ -244,7 +262,12 @@ public sealed partial class BattleInstance
                         damage.AttributeId,
                         checked(damage.Ratio * instance.Stacks),
                         damage.CanCrit);
-                    QueueCombat(target.Id, _nextCommandSequence++, command, events);
+                    QueueCombat(
+                        target.Id,
+                        _nextCommandSequence++,
+                        command,
+                        events,
+                        instance.CombatSnapshot);
                     break;
                 }
             case PeriodicHealBuffEffect heal:
@@ -260,6 +283,14 @@ public sealed partial class BattleInstance
                     QueueCombat(target.Id, _nextCommandSequence++, command, events);
                     break;
                 }
+            case PeriodicResourceBuffEffect resource:
+                ChangeResource(
+                    target,
+                    resource.ResourceId,
+                    checked(resource.Amount * instance.Stacks),
+                    events,
+                    command: null);
+                break;
         }
     }
 
@@ -304,9 +335,25 @@ public sealed partial class BattleInstance
                 cast.Definition.Id));
         }
 
-        if (target.Controls.Count > 0 && target.CarryingId is not null)
+        if (target.HasControl(ControlType.Stun) &&
+            target.CarryingId is not null)
         {
             DropCarry(target, events);
         }
+    }
+
+    private CombatSourceSnapshot? CaptureBuffCombatSnapshot(
+        long sourceId,
+        DeterministicRng rng,
+        CombatSourceSnapshot? provided)
+    {
+        if (provided is not null)
+        {
+            return provided.WithRng(rng);
+        }
+
+        return TryGetActingSource(sourceId) is { } source
+            ? CaptureCombatSnapshot(source, rng)
+            : null;
     }
 }

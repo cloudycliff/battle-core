@@ -198,3 +198,10 @@ public sealed record PickedUpEvent(
     string DefinitionId,
     long CharacterId,
     PickupKind Kind) : BattleEvent(Frame);
+
+public sealed record ResourceChangedEvent(
+    long Frame,
+    long CharacterId,
+    string ResourceId,
+    long Amount,
+    long Remaining) : BattleEvent(Frame);

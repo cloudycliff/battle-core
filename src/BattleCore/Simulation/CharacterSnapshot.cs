@@ -29,4 +29,5 @@ public sealed record CharacterSnapshot(
     long? OwnerId,
     long? CarryingId,
     long? CarriedById,
-    IReadOnlyList<string> ModifierSourceIds);
+    IReadOnlyList<string> ModifierSourceIds,
+    IReadOnlyDictionary<string, long> Resources);

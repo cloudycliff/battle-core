@@ -156,6 +156,14 @@ public sealed partial class BattleInstance
                             shield.DurationFrames),
                         events);
                     break;
+                case PickupGrantResourceEffect resource:
+                    ChangeResource(
+                        character,
+                        resource.ResourceId,
+                        resource.Amount,
+                        events,
+                        command: null);
+                    break;
             }
         }
     }

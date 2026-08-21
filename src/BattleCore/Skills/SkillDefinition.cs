@@ -17,7 +17,8 @@ public sealed class SkillDefinition
         int cooldownFrames,
         IEnumerable<SkillEffect> effects,
         bool canMoveWhileCasting = false,
-        SkillCategory category = SkillCategory.Spell)
+        SkillCategory category = SkillCategory.Spell,
+        IReadOnlyDictionary<string, long>? resourceCosts = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(durationFrames);
@@ -35,8 +36,16 @@ public sealed class SkillDefinition
             .ToArray();
         CanMoveWhileCasting = canMoveWhileCasting;
         Category = category;
+        ResourceCosts = new Dictionary<string, long>(
+            resourceCosts ?? new Dictionary<string, long>(StringComparer.Ordinal),
+            StringComparer.Ordinal);
 
         ValidateEffects();
+        foreach (var (resourceId, amount) in ResourceCosts)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(resourceId);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(amount);
+        }
     }
 
     public string Id { get; }
@@ -45,6 +54,7 @@ public sealed class SkillDefinition
     public IReadOnlyList<SkillEffect> Effects { get; }
     public bool CanMoveWhileCasting { get; }
     public SkillCategory Category { get; }
+    public IReadOnlyDictionary<string, long> ResourceCosts { get; }
 
     private void ValidateEffects()
     {

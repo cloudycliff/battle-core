@@ -1,5 +1,6 @@
 using BattleCore.Attributes;
 using BattleCore.Combat;
+using BattleCore.Randomness;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
 
@@ -82,10 +83,10 @@ public sealed partial class BattleInstance
             switch (pending.Command)
             {
                 case DealDamageCommand damage:
-                    ApplyDamage(damage, events);
+                    ApplyDamage(damage, events, pending.Snapshot);
                     break;
                 case HealCommand heal:
-                    ApplyHeal(heal, events);
+                    ApplyHeal(heal, events, pending.Snapshot);
                     break;
             }
         }
@@ -93,10 +94,19 @@ public sealed partial class BattleInstance
         _pendingCombat.Clear();
     }
 
-    private void ApplyDamage(DealDamageCommand command, List<BattleEvent> events)
+    private void ApplyDamage(
+        DealDamageCommand command,
+        List<BattleEvent> events,
+        CombatSourceSnapshot? snapshot = null)
     {
-        if (!TryGetLiving(command.SourceId, command, events, out var source) ||
-            !TryGetCharacter(command.TargetId, command, events, out var target))
+        var liveSource = TryGetActingSource(command.SourceId);
+        if (snapshot is null && liveSource is null)
+        {
+            Reject(command, events, $"Character '{command.SourceId}' cannot act.");
+            return;
+        }
+
+        if (!TryGetCharacter(command.TargetId, command, events, out var target))
         {
             return;
         }
@@ -107,19 +117,22 @@ public sealed partial class BattleInstance
             return;
         }
 
-        var hit = ComputeBase(source, command.AttributeId, command.Flat, command.Ratio);
+        var hit = snapshot?.ComputeBase(command.AttributeId, command.Flat, command.Ratio)
+            ?? ComputeBase(liveSource!, command.AttributeId, command.Flat, command.Ratio);
         var wasCrit = false;
         if (command.CanCrit)
         {
             var critRate = System.Math.Clamp(
-                source.Attributes.Get(_config.Bindings.CritRate),
+                snapshot?.CritRate ?? liveSource!.Attributes.Get(_config.Bindings.CritRate),
                 0,
                 AttributeSet.RatioScale);
-            wasCrit = source.CombatRng.NextInt((int)AttributeSet.RatioScale) < critRate;
+            var rng = snapshot?.Rng ?? liveSource!.CombatRng;
+            wasCrit = rng.NextInt((int)AttributeSet.RatioScale) < critRate;
             if (wasCrit)
             {
-                hit = hit * source.Attributes.Get(_config.Bindings.CritDamage) /
-                      AttributeSet.RatioScale;
+                var critDamage = snapshot?.CritDamage
+                    ?? liveSource!.Attributes.Get(_config.Bindings.CritDamage);
+                hit = hit * critDamage / AttributeSet.RatioScale;
             }
         }
 
@@ -135,17 +148,21 @@ public sealed partial class BattleInstance
                 _config.MaximumMitigation);
         }
 
-        hit = CombatMath.ScaleByRate(hit, source.Attributes.Get(_config.Bindings.DamageDealt));
+        hit = CombatMath.ScaleByRate(
+            hit,
+            snapshot?.DamageDealt ?? liveSource!.Attributes.Get(_config.Bindings.DamageDealt));
         hit = CombatMath.ScaleByRate(hit, target.Attributes.Get(_config.Bindings.DamageTaken));
         if (hit < 0)
         {
             hit = 0;
         }
 
-        if (hit == 0 && CombatMath.ComputeBase(
+        var rawBase = snapshot?.ComputeBase(command.AttributeId, command.Flat, command.Ratio)
+            ?? CombatMath.ComputeBase(
                 command.Flat,
-                ReadAttribute(source, command.AttributeId),
-                command.Ratio) > 0)
+                ReadAttribute(liveSource!, command.AttributeId),
+                command.Ratio);
+        if (hit == 0 && rawBase > 0)
         {
             hit = _config.MinimumDamage;
         }
@@ -159,7 +176,7 @@ public sealed partial class BattleInstance
 
         events.Add(new DamageEvent(
             CurrentFrame,
-            source.Id,
+            command.SourceId,
             target.Id,
             command.DamageType,
             hpDamage,
@@ -168,14 +185,23 @@ public sealed partial class BattleInstance
 
         if (target.CurrentHp <= 0)
         {
-            Kill(target, source.Id, events);
+            Kill(target, command.SourceId, events);
         }
     }
 
-    private void ApplyHeal(HealCommand command, List<BattleEvent> events)
+    private void ApplyHeal(
+        HealCommand command,
+        List<BattleEvent> events,
+        CombatSourceSnapshot? snapshot = null)
     {
-        if (!TryGetLiving(command.SourceId, command, events, out var source) ||
-            !TryGetCharacter(command.TargetId, command, events, out var target))
+        var liveSource = TryGetActingSource(command.SourceId);
+        if (snapshot is null && liveSource is null)
+        {
+            Reject(command, events, $"Character '{command.SourceId}' cannot act.");
+            return;
+        }
+
+        if (!TryGetCharacter(command.TargetId, command, events, out var target))
         {
             return;
         }
@@ -186,19 +212,22 @@ public sealed partial class BattleInstance
             return;
         }
 
-        var amount = ComputeBase(source, command.AttributeId, command.Flat, command.Ratio);
+        var amount = snapshot?.ComputeBase(command.AttributeId, command.Flat, command.Ratio)
+            ?? ComputeBase(liveSource!, command.AttributeId, command.Flat, command.Ratio);
         var wasCrit = false;
         if (command.CanCrit)
         {
             var critRate = System.Math.Clamp(
-                source.Attributes.Get(_config.Bindings.CritRate),
+                snapshot?.CritRate ?? liveSource!.Attributes.Get(_config.Bindings.CritRate),
                 0,
                 AttributeSet.RatioScale);
-            wasCrit = source.CombatRng.NextInt((int)AttributeSet.RatioScale) < critRate;
+            var rng = snapshot?.Rng ?? liveSource!.CombatRng;
+            wasCrit = rng.NextInt((int)AttributeSet.RatioScale) < critRate;
             if (wasCrit)
             {
-                amount = amount * source.Attributes.Get(_config.Bindings.CritDamage) /
-                         AttributeSet.RatioScale;
+                var critDamage = snapshot?.CritDamage
+                    ?? liveSource!.Attributes.Get(_config.Bindings.CritDamage);
+                amount = amount * critDamage / AttributeSet.RatioScale;
             }
         }
 
@@ -210,11 +239,32 @@ public sealed partial class BattleInstance
         target.CurrentHp += amount;
         events.Add(new HealEvent(
             CurrentFrame,
-            source.Id,
+            command.SourceId,
             target.Id,
             amount,
             wasCrit));
     }
+
+    private CharacterState? TryGetActingSource(long sourceId) =>
+        _characters.TryGetValue(sourceId, out var source) && source.CanAct
+            ? source
+            : null;
+
+    private CombatSourceSnapshot CaptureCombatSnapshot(
+        CharacterState source,
+        DeterministicRng rng) =>
+        new()
+        {
+            SourceId = source.Id,
+            FactionId = source.FactionId,
+            CritRate = source.Attributes.Get(_config.Bindings.CritRate),
+            CritDamage = source.Attributes.Get(_config.Bindings.CritDamage),
+            DamageDealt = source.Attributes.Get(_config.Bindings.DamageDealt),
+            Rng = rng,
+            Attributes = _config.AttributeIds
+                .Where(source.Attributes.Contains)
+                .ToDictionary(id => id, source.Attributes.Get, StringComparer.Ordinal),
+        };
 
     private long ComputeBase(
         CharacterState source,

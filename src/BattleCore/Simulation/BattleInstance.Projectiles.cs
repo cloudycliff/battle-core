@@ -3,6 +3,7 @@ using BattleCore.Combat;
 using BattleCore.Effects;
 using BattleCore.Math;
 using BattleCore.Projectiles;
+using BattleCore.Randomness;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
 using BattleCore.Skills;
@@ -115,9 +116,11 @@ public sealed partial class BattleInstance
                 _ => caster.Position,
             };
 
+        var areaId = _nextEntityId++;
+        var rng = DeterministicRng.Derive(Seed, areaId, AreaStream);
         var area = new AreaEffectState
         {
-            Id = _nextEntityId++,
+            Id = areaId,
             Definition = definition,
             SourceId = caster.Id,
             FactionId = caster.FactionId,
@@ -127,6 +130,7 @@ public sealed partial class BattleInstance
                 ? CurrentFrame
                 : CurrentFrame + definition.IntervalFrames,
             ExpiryFrame = CurrentFrame + definition.DurationFrames,
+            CombatSnapshot = CaptureCombatSnapshot(caster, rng),
         };
         _areaEffects.Add(area.Id, area);
         events.Add(new SkillHitEvent(
@@ -244,8 +248,7 @@ public sealed partial class BattleInstance
                 continue;
             }
 
-            if (CurrentFrame < area.NextTickFrame ||
-                !_characters.TryGetValue(area.SourceId, out var source))
+            if (CurrentFrame < area.NextTickFrame)
             {
                 continue;
             }
@@ -253,10 +256,19 @@ public sealed partial class BattleInstance
             events.Add(new AreaEffectTickedEvent(CurrentFrame, area.Id));
             foreach (var target in ResolveCircle(area.Position, area.Definition.Radius, false)
                          .Where(candidate =>
-                             IsRelationMatch(source, candidate, area.Definition.Relation))
+                             IsRelationMatch(
+                                 area.SourceId,
+                                 area.FactionId,
+                                 candidate,
+                                 area.Definition.Relation))
                          .OrderBy(candidate => candidate.Id))
             {
-                ApplyHitEffects(source.Id, target, area.Definition.HitEffects, events);
+                ApplyHitEffects(
+                    area.SourceId,
+                    target,
+                    area.Definition.HitEffects,
+                    events,
+                    area.CombatSnapshot);
             }
 
             area.NextTickFrame = CurrentFrame + area.Definition.IntervalFrames;
@@ -275,7 +287,8 @@ public sealed partial class BattleInstance
         long sourceId,
         CharacterState target,
         IReadOnlyList<HitEffect> hitEffects,
-        List<BattleEvent> events)
+        List<BattleEvent> events,
+        CombatSourceSnapshot? snapshot = null)
     {
         foreach (var hitEffect in hitEffects)
         {
@@ -294,7 +307,8 @@ public sealed partial class BattleInstance
                             damage.AttributeId,
                             damage.Ratio,
                             damage.CanCrit),
-                        events);
+                        events,
+                        snapshot);
                     break;
                 case HitHealEffect heal:
                     QueueCombat(
@@ -308,7 +322,8 @@ public sealed partial class BattleInstance
                             heal.AttributeId,
                             heal.Ratio,
                             heal.CanCrit),
-                        events);
+                        events,
+                        snapshot);
                     break;
                 case HitShieldEffect shield:
                     GrantShield(
@@ -326,7 +341,8 @@ public sealed partial class BattleInstance
                             sourceId,
                             target.Id,
                             buff.BuffId),
-                        events);
+                        events,
+                        snapshot);
                     break;
             }
         }

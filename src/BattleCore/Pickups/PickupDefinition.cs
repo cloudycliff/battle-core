@@ -36,6 +36,10 @@ public sealed record PickupShieldEffect(
     long Amount,
     int DurationFrames) : PickupEffect;
 
+public sealed record PickupGrantResourceEffect(
+    string ResourceId,
+    long Amount) : PickupEffect;
+
 public sealed class PickupDefinition
 {
     public PickupDefinition(
@@ -77,6 +81,13 @@ public sealed class PickupDefinition
             {
                 throw new ArgumentException(
                     "Pickup shield amount must be positive and duration non-negative.");
+            }
+
+            if (effect is PickupGrantResourceEffect resource &&
+                (string.IsNullOrWhiteSpace(resource.ResourceId) || resource.Amount == 0))
+            {
+                throw new ArgumentException(
+                    "Pickup resource grants require a resource id and a non-zero amount.");
             }
         }
     }

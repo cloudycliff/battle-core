@@ -113,3 +113,9 @@ public sealed record RemoveModifierSourceCommand(
     long Frame,
     long CharacterId,
     string SourceId) : BattleCommand(Frame);
+
+public sealed record GrantResourceCommand(
+    long Frame,
+    long CharacterId,
+    string ResourceId,
+    long Amount) : BattleCommand(Frame);

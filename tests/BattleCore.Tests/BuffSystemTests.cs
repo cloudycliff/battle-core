@@ -74,6 +74,37 @@ public sealed class BuffSystemTests
     }
 
     [Fact]
+    public void PeriodicDamage_SnapshotsSourceContribution()
+    {
+        var buff = new BuffDefinition(
+            "burn",
+            durationFrames: 6,
+            BuffStackingRule.Refresh,
+            [
+                new PeriodicDamageBuffEffect(
+                    IntervalFrames: 1,
+                    DamageType.True,
+                    Flat: 10),
+            ]);
+        var battle = CreateBattle(buff, spawnEnemy: true);
+        battle.Enqueue(new ApplyBuffCommand(1, 1, 2, "burn"));
+        battle.Tick();
+        Assert.Equal(10, Assert.Single(battle.Tick().OfType<DamageEvent>()).Amount);
+
+        battle.Enqueue(new ApplyModifierSourceCommand(
+            3,
+            1,
+            "amp",
+            [new ModifierContribution(
+                TestBattleFactory.Bindings.DamageDealt,
+                ModifierKind.Flat,
+                10_000)]));
+        battle.Tick();
+        Assert.Equal(10, Assert.Single(battle.Tick().OfType<DamageEvent>()).Amount);
+        Assert.Equal(10_000, battle.GetAttribute(1, TestBattleFactory.Bindings.DamageDealt));
+    }
+
+    [Fact]
     public void Stun_BlocksMovementAndCancelsActiveSkill()
     {
         var stun = new BuffDefinition(

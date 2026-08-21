@@ -12,6 +12,9 @@ public sealed class AttributeSet
         _baseValues = new Dictionary<string, long>(baseValues, StringComparer.Ordinal);
     }
 
+    public bool Contains(string attributeId) =>
+        _baseValues.ContainsKey(attributeId);
+
     public long Get(string attributeId)
     {
         if (!_baseValues.TryGetValue(attributeId, out var baseValue))

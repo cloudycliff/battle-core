@@ -28,6 +28,11 @@ public sealed record PeriodicHealBuffEffect(
     long Ratio = 0,
     bool CanCrit = false) : PeriodicBuffEffect(IntervalFrames);
 
+public sealed record PeriodicResourceBuffEffect(
+    int IntervalFrames,
+    string ResourceId,
+    long Amount) : PeriodicBuffEffect(IntervalFrames);
+
 public enum ControlType
 {
     Stun,

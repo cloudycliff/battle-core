@@ -2,7 +2,7 @@
 
 面向要**接入宿主**（自己的游戏、工具、测试）的人：怎么创建一场战斗、怎么灌输入、怎么读输出、配置从哪几块拼起来。
 
-术语和冻结规则以 [CONTEXT.md](../CONTEXT.md)、[V1 需求](v1-requirements.md) 为准。伤害公式、选敌几何、ADR 不在这里重复，避免两处各改一版。
+术语和冻结规则以 [CONTEXT.md](../CONTEXT.md)、[V1 需求](v1-requirements.md) 与对应 [ADR](adr/) 为准。本页只说明当前接入方式，不另行定义行为。
 
 当前配置入口是**内存对象**（C# 构造）。没有 JSON 加载器；你可以用任何格式在核外反序列化，再 new 这些类型。
 
@@ -197,8 +197,9 @@ dotnet test BattleCore.slnx --configuration Release
 7. Buff（含周期效果）  
 8. 伤害/治疗收尾  
 9. 死亡、复活倒计时、尸体消失  
-10. 若到达 `maxFrames`，发出 `BattleTimeoutEvent`  
-11. `CurrentFrame++`
+10. 靠近拾取
+11. 若到达 `maxFrames`，发出 `BattleTimeoutEvent`
+12. `CurrentFrame++`
 
 Brain 看到的是「本帧外部命令已经落地、本帧移动还没发生」的世界。`PlayerControlled == true` 的角色**不跑 Brain**。
 
@@ -261,6 +262,7 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 - `BlocksMovement`：是否参与敌对硬挡；商人/待救通常 `false`。同阵营可重叠。  
 - `Lives`：致死时若 > 0 则扣次数并倒计时站起，否则进入 Dead。
 - `CanBeRevived`：默认 `false`。为 `false` 时 Dead 尸体按 `BattleConfig.CorpseDurationFrames` 消失；为 `true` 时覆盖该计时，尸体一直保留到复活。
+- 致死时清普通 Buff、护盾、当前技能/移动/软锁/Carry；保留 PreventRevive Buff、技能 CD 与 ModifierSource。
 - `SkillIds`：该模板能放的技能，**顺序 = Brain 进攻技能优先级**。  
 - `BrainId`：可选；生成时可用命令覆盖。
 
@@ -278,9 +280,9 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 
 `SkillDashEffect(Frame, Distance)` 使用施法 `Direction` 冲固定距离，朝 `TargetPoint` 冲但不越过该点，或朝 `TargetId` 在效果帧的位置冲固定距离。冲锋复用普通移动的地图、地形和敌对占位阻挡，遇阻缩短，不滑墙、不穿过中途障碍。Root 会阻止施放/生效，被 Carry 的单位不能自行冲锋；载体冲锋时被携带者同步跟随。位移产生 `CharacterMovedEvent`，效果生效产生以施法者为目标的 `SkillHitEvent`。
 
-冷却按逻辑帧。默认真言类会被沉默打断，武器类会被缴械打断（`SkillCategory`）。眩晕取消当前施法。`CanMoveWhileCasting` 控制前摇/后摇能否走。
+冷却按逻辑帧。技能可声明一种或多种资源消耗：`BattleConfig` 声明资源 ID 与上限，模板给初值。起手时原子扣除，不够则拒绝且不进 CD。死亡保留当前值。回复用 `GrantResourceCommand`、即时拾取或周期资源 Buff。默认真言类会被沉默阻止起手，武器类会被缴械阻止起手（`SkillCategory`）。眩晕取消当前施法；受伤不打断。V1 不允许取消后摇，整个时间轴结束前不能再次起手。`CanMoveWhileCasting` 控制前摇/后摇能否走。
 
-投射物 V1：直线匀速、碰撞圆、寿命或出界销毁、穿透次数（0 = 第一次有效命中后销毁）。无跟踪、无弹射。区域：地面或跟随目标，按间隔结算。
+投射物 V1：直线匀速、碰撞圆、寿命或出界销毁、穿透次数（0 = 第一次有效命中后销毁）。无跟踪、无弹射。区域：地面或跟随目标，按间隔结算；生成时快照来源贡献并自带 RNG，创建者死亡后仍继续。跟随目标进入 Dead 或消失则销毁。
 
 ### 5.3.1 Carry
 
@@ -290,11 +292,13 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 - `SkillDropCarryEffect`：就地放下。
 - `SkillThrowCarryEffect`：沿施法 `Direction` 或朝 `TargetPoint` 做一次缩短位移，然后结束携带。投掷技能施法时必须带方向或点。
 
-载体受到任何控制（晕/沉默/定身/缴械）或任一方死亡时掉落。被携带者不参与占位阻挡。快照字段：`CarryingId` / `CarriedById`。事件：`CarryStartedEvent`、`CharacterThrownEvent`、`CarryEndedEvent`。
+冻结规则是载体眩晕或任一方死亡时掉落；定身只阻止移动，沉默/缴械不拆关系。被携带者不参与占位阻挡。快照字段：`CarryingId` / `CarriedById`。事件：`CarryStartedEvent`、`CharacterThrownEvent`、`CarryEndedEvent`。
+
+载体因冲锋、击退等技能效果位移时，被携带者应在同帧保持偏移跟随；携带期间不单独碰撞，结束关系时再校正落点。冲锋已按此行为；击退/拉人尚未编码。
 
 ### 5.4 Buff
 
-Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表。已实现：属性修饰、周期伤/治、控制（晕、沉默、定身、缴械）、免疫 Tag、替换 Tag、按 Tag 驱散。护盾目前主要是 `GrantShield` / 技能护盾效果，不是「Buff 上挂盾」那套独立建模。
+Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表。已实现：属性修饰、周期伤/治、控制（晕、沉默、定身、缴械）、免疫 Tag、替换 Tag、按 Tag 驱散。护盾是独立 ShieldLayer，主要由 `GrantShield` / 技能护盾效果创建；移除来源 Buff 不自动拆盾。
 
 ### 5.5 Brain
 
@@ -321,7 +325,7 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 靠近判定在核内做，阶段在伤害与生死之后。同帧按 Pickup `entityId` 升序；每个角色每帧最多捡 1 个；同一物品重叠时取角色 `entityId` 最小者。
 
-- `PickupKind.Instant`：核立刻生效（治疗、加 Lives、永久属性修饰、Buff、护盾）。
+- `PickupKind.Instant`：核立刻生效（治疗、加 Lives、永久属性修饰、Buff、护盾、资源）。
 - `PickupKind.Stash`：只发 `PickedUpEvent` 并移除场上物体；背包、拒收、再掉出由外部处理。
 
 谁能捡由 `PickupPickerKind` 决定（默认 `Any`）：`PlayerControlled` 仅主角标记；`SameFaction` 仅与 `SpawnPickupCommand.FactionId` 相同的阵营（盖拾取方阵营，不要盖死人）。靠近判定仍在核内；不合格角色直接跳过。
@@ -337,19 +341,19 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 ### 命令（均带逻辑帧戳）
 
 移动：方向 / `MoveTo` / 停止。`MoveTo` 直线走，无寻路；被挡无法接近终点则取消。  
-朝向：`SetFacing`（受伤不转向）。全圆 1024 档。  
+朝向：当前可用 `SetFacing`（受伤不转向）。冻结规则还要求带方向/目标点的 `CastSkill` 起手成功时自动转向且取消不回滚；该项尚未编码。全圆 1024 档。  
 目标：`SetTarget` 软锁；技能是否打它由选敌器决定。  
-战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、Buff 添加/移除/驱散、`Revive`（允许复活且未被禁止复活的友方 Dead）。
+战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、`GrantResource`、Buff 添加/移除/驱散、`Revive`（允许复活且未被禁止复活的友方 Dead）。
 生成：`SpawnCharacter`（可 `BrainId`、`OwnerId`、覆盖初始 HP、开局 `ModifierSources`）、`SpawnPickup`。
 装备等局外修正：`ApplyModifierSource` / `RemoveModifierSource`。同一 `SourceId` 再 Apply 会先卸旧组再挂新组。核不算装备表；宿主把算好的 Flat/Percent/Final 灌进来。即时拾取仍可加匿名永久修饰，与具名来源互不替代。
 
 ### 事件
 
-生成/移动/朝向/目标、技能开始/命中/结束、弹体与区域、Buff 与控制、伤害/治疗/护盾、携带开始/投掷/结束、拾取生成/`PickedUp`、修饰来源挂上/卸下、死亡/复活/尸体消失、阵营清空、超时、命令拒绝。
+生成/移动/朝向/目标、技能开始/命中/结束、弹体与区域、Buff 与控制、伤害/治疗/护盾、携带开始/投掷/结束、拾取生成/`PickedUp`、修饰来源挂上/卸下、死亡/复活/尸体消失、阵营清空、超时、命令拒绝。`FactionWipedEvent` 只记录该阵营第一次没有 Alive / Reviving Character；可技能复活的 Dead 不阻止该事件，整场每阵营至多一次，宿主不要直接把它当作不可逆失败。
 
 ### 查询
 
-`GetCharacter` / `GetCharacters`、`GetAttribute`、`GetProjectiles`、`GetAreaEffects`、`GetPickups`、`GetSpawnPoints`、`GetPlayerSpawnMarkers`。快照含 HP、护盾、Lives、Buff、CD、控制、是否可操作、当前修饰来源 id 等。查询**不得**改模拟。
+`GetCharacter` / `GetCharacters`、`GetAttribute`、`GetResource`、`GetProjectiles`、`GetAreaEffects`、`GetPickups`、`GetSpawnPoints`、`GetPlayerSpawnMarkers`。快照含 HP、护盾、Lives、资源、Buff、CD、控制、是否可操作、当前修饰来源 id 等。查询**不得**改模拟。
 
 ---
 
@@ -361,9 +365,9 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 ## 8. 现在能做什么 / 先别指望什么
 
-**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋）、直线穿透弹、区域效果、Buff 与控制、四种 Brain、技能召唤 Character、Carry（抓/带/投/放）、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源（装备换装）、按帧刷怪表、`maxFrames` 超时。
+**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋）、直线穿透弹、区域效果（来源快照与独立 RNG）、Buff 与控制、四种 Brain、技能召唤 Character、Carry（抓/带/投/放）、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源（装备换装）、技能资源池、按帧刷怪表、`maxFrames` 超时。
 
-**V1 写了但还没做：** JSON schema/样例加载器、技能资源消耗、Buff 战斗触发（已设计未编码）、指向技能自动改朝向、后摇取消配置、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。进度总表见 [status.md](status.md)。
+**V1 写了但还没做：** JSON schema/样例加载器、Buff 战斗触发（已设计未编码）、指向技能自动改朝向、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。进度总表见 [status.md](status.md)。
 
 **V1 明确不做：** 引导施法、A*、滑墙互推、跟踪弹/弹射、清波/进区刷怪、外交矩阵、可破坏地形、背包真源、FrameHash/回放、把 Godot 放进本仓。
 

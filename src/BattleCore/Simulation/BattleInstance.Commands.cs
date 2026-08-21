@@ -95,6 +95,9 @@ public sealed partial class BattleInstance
             case RemoveModifierSourceCommand removeSource:
                 RemoveModifierSource(removeSource, events);
                 break;
+            case GrantResourceCommand grantResource:
+                GrantResource(grantResource, events);
+                break;
             default:
                 Reject(command, events, "Unsupported command.");
                 break;
@@ -105,7 +108,8 @@ public sealed partial class BattleInstance
         long targetId,
         long sequence,
         BattleCommand command,
-        List<BattleEvent> events)
+        List<BattleEvent> events,
+        CombatSourceSnapshot? snapshot = null)
     {
         if (!_characters.ContainsKey(targetId))
         {
@@ -113,7 +117,7 @@ public sealed partial class BattleInstance
             return;
         }
 
-        _pendingCombat.Add(new PendingCombatEffect(sequence, targetId, command));
+        _pendingCombat.Add(new PendingCombatEffect(sequence, targetId, command, snapshot));
     }
 
     private void Spawn(SpawnCharacterCommand command, List<BattleEvent> events)
@@ -170,6 +174,11 @@ public sealed partial class BattleInstance
             Brain = brain,
             OwnerId = command.OwnerId,
         };
+        foreach (var resource in _config.ResourceDefinitions.Values)
+        {
+            character.Resources[resource.Id] =
+                template.BaseResources.GetValueOrDefault(resource.Id);
+        }
 
         _characters.Add(character.Id, character);
         events.Add(new CharacterSpawnedEvent(
@@ -279,6 +288,7 @@ public sealed partial class BattleInstance
             ReviveCommand value => value.SourceId,
             ApplyModifierSourceCommand value => value.CharacterId,
             RemoveModifierSourceCommand value => value.CharacterId,
+            GrantResourceCommand value => value.CharacterId,
             _ => long.MinValue,
         };
 
@@ -287,5 +297,6 @@ public sealed partial class BattleInstance
     private readonly record struct PendingCombatEffect(
         long Sequence,
         long TargetId,
-        BattleCommand Command);
+        BattleCommand Command,
+        CombatSourceSnapshot? Snapshot);
 }

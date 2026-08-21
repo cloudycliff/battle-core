@@ -109,6 +109,11 @@ public sealed partial class BattleInstance
             return;
         }
 
+        if (!TrySpendResources(caster, skill.ResourceCosts, events, command))
+        {
+            return;
+        }
+
         var cooldownReadyFrame = CurrentFrame + skill.CooldownFrames;
         caster.CooldownReadyFrames[skill.Id] = cooldownReadyFrame;
         caster.ActiveSkill = new ActiveSkillCast
@@ -562,11 +567,18 @@ public sealed partial class BattleInstance
         CharacterState caster,
         CharacterState target,
         TargetRelation relation) =>
+        IsRelationMatch(caster.Id, caster.FactionId, target, relation);
+
+    private static bool IsRelationMatch(
+        long sourceId,
+        int factionId,
+        CharacterState target,
+        TargetRelation relation) =>
         relation switch
         {
-            TargetRelation.Self => caster.Id == target.Id,
-            TargetRelation.Allies => caster.FactionId == target.FactionId,
-            TargetRelation.Enemies => caster.FactionId != target.FactionId,
+            TargetRelation.Self => sourceId == target.Id,
+            TargetRelation.Allies => factionId == target.FactionId,
+            TargetRelation.Enemies => factionId != target.FactionId,
             TargetRelation.Any => true,
             _ => false,
         };

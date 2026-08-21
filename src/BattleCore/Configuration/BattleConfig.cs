@@ -22,6 +22,7 @@ public sealed class BattleConfig
         IEnumerable<AreaEffectDefinition>? areaEffectDefinitions = null,
         IEnumerable<BrainDefinition>? brainDefinitions = null,
         IEnumerable<PickupDefinition>? pickupDefinitions = null,
+        IEnumerable<ResourceDefinition>? resourceDefinitions = null,
         long defenseK = 100,
         int maximumMitigation = 8_000,
         long minimumDamage = 1,
@@ -48,6 +49,8 @@ public sealed class BattleConfig
             (brainDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
         PickupDefinitions = new ReadOnlyDictionary<string, PickupDefinition>(
             (pickupDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
+        ResourceDefinitions = new ReadOnlyDictionary<string, ResourceDefinition>(
+            (resourceDefinitions ?? []).ToDictionary(item => item.Id, StringComparer.Ordinal));
         DefenseK = defenseK;
         MaximumMitigation = maximumMitigation;
         MinimumDamage = minimumDamage;
@@ -66,6 +69,7 @@ public sealed class BattleConfig
     public IReadOnlyDictionary<string, AreaEffectDefinition> AreaEffectDefinitions { get; }
     public IReadOnlyDictionary<string, BrainDefinition> BrainDefinitions { get; }
     public IReadOnlyDictionary<string, PickupDefinition> PickupDefinitions { get; }
+    public IReadOnlyDictionary<string, ResourceDefinition> ResourceDefinitions { get; }
     public long DefenseK { get; }
     public int MaximumMitigation { get; }
     public long MinimumDamage { get; }
@@ -134,6 +138,30 @@ public sealed class BattleConfig
                 errors.Add(
                     $"Character '{template.Id}' references unknown brain '{brainId}'.");
             }
+
+            foreach (var resourceId in template.BaseResources.Keys)
+            {
+                if (!ResourceDefinitions.ContainsKey(resourceId))
+                {
+                    errors.Add(
+                        $"Character '{template.Id}' references undeclared resource '{resourceId}'.");
+                }
+            }
+
+            foreach (var (resourceId, amount) in template.BaseResources)
+            {
+                if (amount < 0)
+                {
+                    errors.Add(
+                        $"Character '{template.Id}' resource '{resourceId}' cannot start negative.");
+                }
+                else if (ResourceDefinitions.TryGetValue(resourceId, out var definition) &&
+                         amount > definition.Maximum)
+                {
+                    errors.Add(
+                        $"Character '{template.Id}' resource '{resourceId}' starts above maximum {definition.Maximum}.");
+                }
+            }
         }
 
         foreach (var skill in SkillDefinitions.Values)
@@ -193,6 +221,19 @@ public sealed class BattleConfig
                     errors.Add($"Skill '{skill.Id}' references unknown brain '{brainId}'.");
                 }
             }
+
+            foreach (var (resourceId, amount) in skill.ResourceCosts)
+            {
+                if (!ResourceDefinitions.ContainsKey(resourceId))
+                {
+                    errors.Add($"Skill '{skill.Id}' references undeclared resource '{resourceId}'.");
+                }
+
+                if (amount <= 0)
+                {
+                    errors.Add($"Skill '{skill.Id}' resource cost '{resourceId}' must be positive.");
+                }
+            }
         }
 
         ValidateHitCatalog("Projectile", ProjectileDefinitions.ToDictionary(
@@ -214,6 +255,16 @@ public sealed class BattleConfig
                 {
                     errors.Add(
                         $"Buff '{buff.Id}' references undeclared attribute '{attributeId}'.");
+                }
+            }
+
+            foreach (var resourceId in buff.Effects
+                         .OfType<PeriodicResourceBuffEffect>()
+                         .Select(effect => effect.ResourceId))
+            {
+                if (!ResourceDefinitions.ContainsKey(resourceId))
+                {
+                    errors.Add($"Buff '{buff.Id}' references undeclared resource '{resourceId}'.");
                 }
             }
         }
@@ -238,6 +289,16 @@ public sealed class BattleConfig
                 if (!BuffDefinitions.ContainsKey(buffId))
                 {
                     errors.Add($"Pickup '{pickup.Id}' references unknown buff '{buffId}'.");
+                }
+            }
+
+            foreach (var resourceId in pickup.Effects
+                         .OfType<PickupGrantResourceEffect>()
+                         .Select(effect => effect.ResourceId))
+            {
+                if (!ResourceDefinitions.ContainsKey(resourceId))
+                {
+                    errors.Add($"Pickup '{pickup.Id}' references undeclared resource '{resourceId}'.");
                 }
             }
         }

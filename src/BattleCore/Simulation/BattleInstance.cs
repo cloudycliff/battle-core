@@ -12,6 +12,8 @@ public sealed partial class BattleInstance
     public const int LogicFramesPerSecond = 30;
     private const ulong CombatStream = 1;
     private const ulong AiStream = 2;
+    private const ulong AreaStream = 3;
+    private const ulong BuffStream = 4;
 
     private readonly BattleConfig _config;
     private readonly MapConfig _map;
@@ -115,6 +117,12 @@ public sealed partial class BattleInstance
     public long? GetAttribute(long characterId, string attributeId) =>
         _characters.TryGetValue(characterId, out var character)
             ? character.Attributes.Get(attributeId)
+            : null;
+
+    public long? GetResource(long characterId, string resourceId) =>
+        _characters.TryGetValue(characterId, out var character) &&
+        character.Resources.TryGetValue(resourceId, out var amount)
+            ? amount
             : null;
 
     public IReadOnlyList<CharacterSnapshot> GetCharacters() =>

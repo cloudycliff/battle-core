@@ -136,6 +136,79 @@ public sealed class ProjectileAreaTests
     }
 
     [Fact]
+    public void AreaEffect_KeepsTickingAfterSourceDies()
+    {
+        var area = new AreaEffectDefinition(
+            "burn_zone",
+            Fix64.FromInt(8),
+            durationFrames: 4,
+            intervalFrames: 1,
+            TargetRelation.Enemies,
+            [new HitDamageEffect(DamageType.True, 10, CanCrit: false)]);
+        var skill = new SkillDefinition(
+            "drop",
+            1,
+            0,
+            [
+                new SkillSpawnAreaEffectEffect(
+                    0,
+                    new SkillTarget(
+                        SkillTargetKind.CircleAtPoint,
+                        TargetRelation.Enemies,
+                        Fix64.Zero),
+                    area.Id),
+            ]);
+        var battle = CreateBattle(skill, areaEffects: [area]);
+        SpawnPair(battle);
+        battle.Enqueue(new CastSkillCommand(1, 1, skill.Id, TargetPoint: Point(8, 2)));
+        battle.Tick();
+        Assert.Equal(90, battle.GetCharacter(2)!.CurrentHp);
+
+        battle.Enqueue(new DealDamageCommand(2, 2, 1, DamageType.True, 10_000, CanCrit: false));
+        battle.Tick();
+        Assert.Equal(LifeState.Dead, battle.GetCharacter(1)!.LifeState);
+        Assert.Equal(80, battle.GetCharacter(2)!.CurrentHp);
+
+        battle.Tick();
+        Assert.Equal(70, battle.GetCharacter(2)!.CurrentHp);
+        Assert.Single(battle.GetAreaEffects());
+    }
+
+    [Fact]
+    public void AreaEffect_DespawnsWhenFollowTargetDies()
+    {
+        var area = new AreaEffectDefinition(
+            "mark",
+            Fix64.FromInt(1),
+            durationFrames: 10,
+            intervalFrames: 10,
+            TargetRelation.Enemies,
+            [new HitDamageEffect(DamageType.True, 1, CanCrit: false)],
+            followsTarget: true,
+            tickOnSpawn: false);
+        var skill = new SkillDefinition(
+            "mark_skill",
+            1,
+            0,
+            [
+                new SkillSpawnAreaEffectEffect(
+                    0,
+                    SkillTarget.ExplicitEnemy,
+                    area.Id),
+            ]);
+        var battle = CreateBattle(skill, areaEffects: [area]);
+        SpawnPair(battle);
+        battle.Enqueue(new CastSkillCommand(1, 1, skill.Id, TargetId: 2));
+        battle.Tick();
+        Assert.Single(battle.GetAreaEffects());
+
+        battle.Enqueue(new DealDamageCommand(2, 1, 2, DamageType.True, 10_000, CanCrit: false));
+        battle.Tick();
+        battle.Tick();
+        Assert.Empty(battle.GetAreaEffects());
+    }
+
+    [Fact]
     public void Config_RejectsUnknownProjectileOnSkill()
     {
         var values = BaseAttributes();

@@ -15,7 +15,8 @@ public sealed class CharacterTemplate
         int lives = 0,
         IEnumerable<string>? skillIds = null,
         string? brainId = null,
-        bool canBeRevived = false)
+        bool canBeRevived = false,
+        IReadOnlyDictionary<string, long>? baseResources = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(baseAttributes);
@@ -32,6 +33,10 @@ public sealed class CharacterTemplate
         CanBeRevived = canBeRevived;
         SkillIds = (skillIds ?? []).ToArray();
         BrainId = brainId;
+        BaseResources = new ReadOnlyDictionary<string, long>(
+            new Dictionary<string, long>(
+                baseResources ?? new Dictionary<string, long>(StringComparer.Ordinal),
+                StringComparer.Ordinal));
     }
 
     public string Id { get; }
@@ -44,4 +49,5 @@ public sealed class CharacterTemplate
     public bool CanBeRevived { get; }
     public IReadOnlyList<string> SkillIds { get; }
     public string? BrainId { get; }
+    public IReadOnlyDictionary<string, long> BaseResources { get; }
 }

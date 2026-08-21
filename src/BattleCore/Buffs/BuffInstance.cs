@@ -1,3 +1,6 @@
+using BattleCore.Combat;
+using BattleCore.Randomness;
+
 namespace BattleCore.Buffs;
 
 internal sealed class BuffInstance
@@ -8,6 +11,8 @@ internal sealed class BuffInstance
     public required long AppliedFrame { get; init; }
     public required long ExpiryFrame { get; set; }
     public required int Stacks { get; set; }
+    public required DeterministicRng Rng { get; init; }
+    public CombatSourceSnapshot? CombatSnapshot { get; set; }
 
     public bool PreventsRevive =>
         Definition.Effects.OfType<PreventReviveBuffEffect>().Any();

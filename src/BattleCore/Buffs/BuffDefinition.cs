@@ -44,6 +44,10 @@ public sealed class BuffDefinition
         foreach (var periodic in Effects.OfType<PeriodicBuffEffect>())
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(periodic.IntervalFrames);
+            if (periodic is PeriodicResourceBuffEffect resource && resource.Amount == 0)
+            {
+                throw new ArgumentException("Periodic resource amount cannot be zero.", nameof(effects));
+            }
         }
     }
 

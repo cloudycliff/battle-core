@@ -39,6 +39,8 @@ internal sealed class CharacterState
     public List<BuffInstance> Buffs { get; } = [];
     public Dictionary<string, List<long>> ModifierSources { get; } =
         new(StringComparer.Ordinal);
+    public Dictionary<string, long> Resources { get; } =
+        new(StringComparer.Ordinal);
 
     public bool CanAct => LifeState == LifeState.Alive;
 
@@ -103,7 +105,8 @@ internal sealed class CharacterState
             OwnerId,
             CarryingId,
             CarriedById,
-            ModifierSources.Keys.ToArray());
+            ModifierSources.Keys.ToArray(),
+            new Dictionary<string, long>(Resources, StringComparer.Ordinal));
 }
 
 internal enum MovementKind

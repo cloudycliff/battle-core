@@ -55,12 +55,12 @@ _Avoid_: 第一版互相挤开, 第一版沿切线滑移
 _Avoid_: 把召唤物做成非 Character 的特殊实体
 
 **Projectile**:
-技能产生的飞行物。V1 为直线匀速、碰撞圆、寿命或出界销毁，以及可配置穿透次数（0 表示首次命中即销毁）。跟踪等转向运动为扩展口，V1 不实现。命中谁由效果 Hit Filter 决定。
+技能产生的飞行物。V1 按米/秒直线匀速，使用碰撞圆，寿命或出界销毁，默认撞 Terrain AABB 销毁（定义可关闭），并支持可配置穿透次数（0 表示首次有效命中即销毁）。跟踪等转向运动为扩展口，V1 不实现。命中谁由效果 Hit Filter 决定。
 _Avoid_: 把所有持续效果都塞进投射物, V1 做跟踪弹/弹射
 
 
 **AreaEffect**:
-附着于地面或跟随目标的区域效果，按间隔或停留施加伤害/Buff。
+附着于地面或跟随目标的区域效果，按间隔或停留施加伤害/Buff。生成时快照来源方战斗贡献；创建者死亡后仍继续。跟随目标进入 Dead 或消失则销毁。每个区域有独立确定性 RNG。
 _Avoid_: 法术场, DoT 圈（口语可，文档用 AreaEffect）
 
 **Terrain**:
@@ -86,7 +86,7 @@ _Avoid_: 直接改内部状态来“遥控”单位
 _Avoid_: 在代码里写死唯一属性集
 
 **Combat Binding**:
-Battle Config 中把管道/移动槽位映射到属性 ID 的对照表。必填：MaxHP、PhysicalDef、MagicalDef、CritRate、CritDamage、DamageDealt、DamageTaken、MoveSpeed。名字可自定，但必须指向已声明属性。CurrentHP、Shield、Lives 不是 Attribute。
+Battle Config 中把管道/移动槽位映射到属性 ID 的对照表。必填：MaxHP、PhysicalDef、MagicalDef、CritRate、CritDamage、DamageDealt、DamageTaken、MoveSpeed。名字可自定，但必须指向已声明属性；MoveSpeed 单位为米/秒。CurrentHP、Shield、Lives 不是 Attribute。
 _Avoid_: 在代码里写死属性英文名, 无绑定让管道猜名字
 
 **Modifier**:
@@ -118,15 +118,15 @@ _Avoid_: 另做 PassiveSkill 类型, 触发里再开技能时间轴, 触发再�
 ## Skills
 
 **Skill**:
-由配置描述的能力：时间轴（前摇/生效/后摇）+ 目标选择器 + 效果列表；消耗与冷却以逻辑帧计。
+由配置描述的能力：时间轴（前摇/生效/后摇）+ 目标选择器 + 效果列表；消耗与冷却以逻辑帧计。正 `Range` 由核统一校验，未配或非正值表示不限。V1 无公共 GCD、充能层数与冷却缩减。
 _Avoid_: 每个技能一份专用硬编码逻辑作为主路径
 
 **Skill Timeline**:
-技能从按下到结束的帧序列；关键帧触发效果。第一版不含持续引导（按住引导）施法。
+技能从按下到结束的帧序列；关键帧触发效果。V1 从前摇开始到后摇结束前独占当前时间轴，不允许取消后摇起手另一技能；不含持续引导（按住引导）施法。
 _Avoid_: 第一版 Channel / 引导施法
 
 **Carry**:
-两个 Character 之间的携带关系：载体移动时被携带者跟随；被携带者移动权暂交；可通过技能效果开始携带、投掷或放下。
+两个 Character 之间的携带关系：载体移动时被携带者跟随；被携带者移动权暂交；可通过技能效果开始携带、投掷或放下。载体眩晕或任一方死亡时掉落；定身只阻止移动，沉默与缴械不拆除既有关系。载体发生技能位移时，被携带者同帧保持 CarryOffset；携带期间不单独做碰撞，结束关系时校正合法落点。
 _Avoid_: 仅用 Buff 塞 carrierId 冒充携带, 把整段抓投写成单一特殊技能类
 
 ## Boundaries
@@ -178,7 +178,7 @@ _Avoid_: 只能残血出生且无满血默认
 _Avoid_: 把造成与受到加成先加在同一个乘区, 治疗吃易伤
 
 **Shield**:
-护盾是 Buff 上的额度，可多层。伤害先按「到期帧升序，同时到期按 instanceId 升序」扣盾，剩余再扣 HP。治疗不补盾（加盾是单独效果）。
+护盾是 Character 上独立于 Buff instance 的有序 ShieldLayer，可由技能、命令、拾取或 Buff 动作创建。来源 Buff 被移除或驱散不自动拆盾；护盾按自己的到期帧结束。伤害先按「到期帧升序，同时到期按 instanceId 升序」扣盾，剩余再扣 HP。治疗不补盾（加盾是单独效果）。
 _Avoid_: 角色上只有一个混合护盾池, 把护盾和 HP 溢出当成同一件事
 
 **Damage Type**:
@@ -186,11 +186,11 @@ _Avoid_: 角色上只有一个混合护盾池, 把护盾和 HP 溢出当成同�
 _Avoid_: 每个技能自定义完计算法
 
 **Death**:
-HP 降至 0 或以下时：若还有复活次数则进入复活倒计时（不可被选中、不受伤、不行动），次数耗尽并到期后站起；若无次数则立即 Dead，停止 Brain 与技能，一般选敌视为无效目标。普通单位的尸体保留 Battle Config 配置的逻辑帧后销毁；模板标记 `CanBeRevived` 的单位覆盖该计时并无限保留尸体。
+HP 降至 0 或以下时：若 Lives > 0，则消耗 1 次并进入复活倒计时（不可被选中、不受伤、不行动），倒计时到期后站起；若 Lives = 0，则立即 Dead。致死时清普通 Buff、护盾、当前技能、移动、软锁与 Carry；保留 PreventRevive Buff、技能 CD 与 ModifierSource。普通单位的尸体保留 Battle Config 配置的逻辑帧后销毁；模板标记 `CanBeRevived` 的单位覆盖该计时并无限保留尸体。
 _Avoid_: 死亡当帧立即从世界抹除且无尸体窗口, 用全局尸体展示时间决定复活资格
 
 **Revive**:
-把 Dead 且模板允许复活的对象拉回战斗的机制。来源包括：自身复活次数耗尽倒计时后自动站起，以及技能效果复活友方（如主角复活宠物）。复活资格与全局尸体展示时间无关；`PreventReviveBuffEffect` 会跨死亡保留并在有效期间阻止复活。普通伤害/控制选敌仍跳过 Dead，复活倒计时中也不是有效目标。
+把 Dead 且模板允许复活的对象拉回战斗的机制。来源包括：消耗一次 Lives 后倒计时自动站起，以及技能效果复活友方（如主角复活宠物）。复活资格与全局尸体展示时间无关；`PreventReviveBuffEffect` 会跨死亡保留并在有效期间阻止复活。普通伤害/控制选敌仍跳过 Dead，复活倒计时中也不是有效目标。
 _Avoid_: 复活只能靠外部换一个新 entityId 的 Spawn
 
 **Lives**:
@@ -198,7 +198,7 @@ Character 上的复活次数资源；可被即时 Pickup 或技能改变。致�
 _Avoid_: 用外部换新实体冒充实命次数
 
 **Facing**:
-Character 独立朝向，可与移动方向不同；由 `SetFacing` 或指向类技能改写。受伤不改变朝向。
+Character 独立朝向，可与移动方向不同；由 `SetFacing` 改写，或在带目标点/方向的 `CastSkill` 校验通过并起手时立即转向。技能之后被取消不回滚朝向；受伤不改变朝向。
 _Avoid_: 朝向等于移动方向, 受击自动转向攻击者
 
 **Map Config**:
@@ -218,11 +218,11 @@ Character 是否接受外部 Command 的标记；与如何被 Spawn 无关。刷
 _Avoid_: 只有刷怪表能出玩家, 只有外部能出可操作单位
 
 **Rng Stream**:
-确定性伪随机流。战斗创建时由 seed 派生：战斗级一流、每 Character 战斗一流、每 Character AI 一流；禁止使用语言/平台默认随机。
-_Avoid_: 全场单一游标, 非确定性 rand
+确定性伪随机流。战斗创建时由 seed 派生：战斗级一流、每 Character 战斗一流、每 Character AI 一流、每 AreaEffect 一流、每 Buff instance 一流；禁止使用语言/平台默认随机。
+_Avoid_: 全场单一游标, 非确定性 rand, 让已销毁 Character 的 RNG 继续被场上效果占用
 
 **Tick Phase**:
-单帧内固定阶段顺序：消费本帧 Command → Brain → 移动 → 技能时间轴 → Projectile/AreaEffect → Buff → 伤害收尾 → 死亡与销毁 → 派发 Battle Event。阶段内实体按 entityId 升序处理。
+单帧内固定阶段顺序：Spawn Table 本帧条目入队 → 消费本帧 Command → Brain → 移动 → 技能时间轴 → Projectile/AreaEffect → Buff → 伤害/治疗收尾 → 死亡与销毁 → Pickup → 超时检查 → 派发 Battle Event。阶段内实体按 entityId 升序处理。Brain 能看到本帧已消费的外部 Command 结果，但看不到尚未执行的移动及后续阶段结果。
 _Avoid_: 未规定顺序的系统穿插, 依赖哈希表遍历顺序
 
 **Late Command**:
@@ -234,11 +234,11 @@ _Avoid_: 迟到命令回放进过去的帧
 _Avoid_: 第一版 A* 绕路, 把技能位移做成持续 MoveTo
 
 **Current Target**:
-Character 上的软锁目标 ID，供 Brain/UI 与选敌器 `CurrentTarget` 使用；技能是否打该目标由选敌器配置决定，软锁本身不强制改写命中。通过 `SetTarget` Command 设置；目标死亡或失效时清除。
+Character 上的软锁目标 ID，供 Brain/UI 与选敌器 `CurrentTarget` 使用；技能是否打该目标由选敌器配置决定，软锁本身不强制改写命中。通过 `SetTarget` Command 设置；目标失效时清除。普通死亡目标会失效；允许复活且当前未被禁止复活的 Dead 可作为复活软锁目标，在复活资格失效前不清除。
 _Avoid_: 硬锁强制所有技能必中当前目标, 无 SetTarget、仅靠核内隐式锁敌
 
 **Battle Outcome**:
-胜负与是否结束战斗由外部根据 Event/Query 裁定；核不内置胜负编辑器。核可发出阵营清空等事实事件，并在达到可配置 `maxFrames` 时发出超时事件，但不自动 Destroy。
+胜负与是否结束战斗由外部根据 Event/Query 裁定；核不内置胜负编辑器。`FactionWiped` 只记录该阵营第一次出现没有 Alive / Reviving Character；可技能复活的 Dead 不阻止该事件，所以它不是不可逆的最终失败。每个阵营整场至多发一次。核在达到可配置 `maxFrames` 时发出超时事件，但不自动 Destroy。
 _Avoid_: 核内写死关卡胜负逻辑并自动销毁战斗
 
 **Battle Instance**:
@@ -254,11 +254,11 @@ _Avoid_: 核内线程池并行阶段, 依赖可变全局单例
 _Avoid_: 全局写死伤害/治疗对象, 第一版完整 Hostile/Friendly/Neutral 矩阵
 
 **Combat Flag**:
-Character 上影响交互的独立开关：Targetable（选敌器是否可选）、Damageable（是否接受伤害与控制类效果）。商人/待救等非战斗角色默认不参与移动阻挡（含敌对硬挡）。不可破坏墙体用 Terrain。
+Character 上影响交互的独立开关：Targetable（普通选敌器是否可选）、Damageable（是否接受伤害与控制类效果）。`UntargetableBuffEffect` 与 `ImmuneToDamageBuffEffect` 分别提供临时不可选中和全伤害免疫，二者彼此独立，也不改变模板开关。商人/待救等非战斗角色默认不参与移动阻挡（含敌对硬挡）。不可破坏墙体用 Terrain。
 _Avoid_: 单一 Invulnerable 混用选中与受伤, 把墙做成 Character
 
 **Pickup Rule**:
-靠近拾取在核内判定。即时拾取由核施加效果；局外物资只发事件并移除场上物体，背包与再掉出由外部处理。拾取资格由定义上的 Picker 过滤（任意 / 仅玩家操控 / 与生成时阵营相同）。
+靠近拾取在核内判定。即时拾取由核施加战斗内效果；局外物资只发事件并移除场上物体，背包、换武器与再掉出由外部处理。宿主换装后通过具名 ModifierSource 把已算好的修饰注入核。拾取资格由定义上的 Picker 过滤（任意 / 仅玩家操控 / 与生成时阵营相同）。
 _Avoid_: 核内解释装备数值与经济, 核内维护局外背包为真源, 捡到之后再问宿主是否销毁
 
 **V1 Scale**:

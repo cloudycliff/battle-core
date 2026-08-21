@@ -1,4 +1,5 @@
 using BattleCore.AreaEffects;
+using BattleCore.Combat;
 using BattleCore.Math;
 
 namespace BattleCore.Simulation;
@@ -13,4 +14,5 @@ internal sealed class AreaEffectState
     public required long? FollowTargetId { get; init; }
     public required long NextTickFrame { get; set; }
     public required long ExpiryFrame { get; init; }
+    public required CombatSourceSnapshot CombatSnapshot { get; init; }
 }
