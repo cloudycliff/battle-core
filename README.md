@@ -4,7 +4,7 @@ Engine-agnostic **.NET 8** combat sim for 2D real-time ARPG. Logic only: no Godo
 
 The host owns the clock. Create a `BattleInstance`, enqueue frame-stamped commands, call `Tick()` (30 Hz, one logic frame each), and consume events.
 
-**Start here:** [使用手册](docs/user-guide.md). **Agent / 进度：** [实现状态](docs/status.md).
+**Host / 外围 agent：** [交接说明](docs/host-handoff.md)（只读本仓、不要改核）。**怎么 Tick：** [使用手册](docs/user-guide.md)。**进度：** [实现状态](docs/status.md)。
 
 ```powershell
 dotnet test BattleCore.slnx --configuration Release
@@ -14,9 +14,9 @@ Add a project reference to `src/BattleCore/BattleCore.csproj` (`net8.0`).
 
 ## Status
 
-Usable for a host: movement, skills, damage pipeline, buffs, linear projectiles, area effects, four built-in Brains, skill summons, carry/throw, pickups, corpse revive skills, dash, named modifier sources, time-based spawn tables.
+Usable for a host: movement, skills, damage pipeline, resource costs, buffs, linear projectiles, area effects, four built-in Brains, skill summons, carry/throw, pickups, corpse revive skills, dash, named modifier sources, time-based spawn tables.
 
-Not done yet: JSON loaders, skill resources, combat triggers (designed), and other V1 config features. See [docs/status.md](docs/status.md) and the user guide.
+Not in core yet (host must work around or wait): JSON loaders, auto-facing on aimed casts, cast range checks, projectile-vs-terrain, knockback/pull, spawn leash, combat triggers. See [docs/status.md](docs/status.md).
 
 ## Design (frozen)
 

@@ -377,6 +377,7 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 ## 9. 还想往下看
 
+- 外围 agent 入口（职责、只读核、阅读顺序）：[host-handoff.md](host-handoff.md)
 - 实现进度（已做 / 已设计未编码 / 未决）：[status.md](status.md)
 - 规则与非目标：[v1-requirements.md](v1-requirements.md)
 - 术语：[CONTEXT.md](../CONTEXT.md)

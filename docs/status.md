@@ -2,7 +2,7 @@
 
 给换会话 / 换 agent 用的进度入口。规则以 [v1-requirements.md](v1-requirements.md)、[CONTEXT.md](../CONTEXT.md)、[adr/](adr/) 为准。**代码是否已做以本页 + `tests/` 为准**，不要只读需求文头的冻结日期。
 
-宿主接入说明：[user-guide.md](user-guide.md)。测试表示当前代码实际行为；若测试与冻结规则冲突，视为实现或文档漂移，不自动改变规则。
+宿主 / 外围 agent 入口：[host-handoff.md](host-handoff.md)。怎么 Tick：[user-guide.md](user-guide.md)。测试表示当前代码实际行为；若测试与冻结规则冲突，视为实现或文档漂移，不自动改变规则。
 
 最后更新：2026-08-21。
 
@@ -88,7 +88,8 @@
 
 ## 建议阅读顺序
 
-1. 本页
-2. [user-guide.md](user-guide.md)
-3. 相关 ADR
-4. `tests/BattleCore.Tests/`
+1. 外围接入：[host-handoff.md](host-handoff.md)
+2. 本页
+3. [user-guide.md](user-guide.md)
+4. 相关 ADR
+5. `tests/BattleCore.Tests/`
