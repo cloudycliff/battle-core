@@ -28,9 +28,11 @@ public sealed class Fix64Tests
     }
 
     [Fact]
-    public void Facing_WrapsIntoOneTurn()
+    public void Facing_FromDirection_UsesQuarterTurnAxes()
     {
-        Assert.Equal(1, new Facing(1025).Step);
-        Assert.Equal(1023, new Facing(-1).Step);
+        Assert.Equal(0, Facing.FromDirection(new FixVector2(Fix64.One, Fix64.Zero)).Step);
+        Assert.Equal(256, Facing.FromDirection(new FixVector2(Fix64.Zero, Fix64.One)).Step);
+        Assert.Equal(512, Facing.FromDirection(new FixVector2(-Fix64.One, Fix64.Zero)).Step);
+        Assert.Equal(768, Facing.FromDirection(new FixVector2(Fix64.Zero, -Fix64.One)).Step);
     }
 }

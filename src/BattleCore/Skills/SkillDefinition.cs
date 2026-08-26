@@ -18,7 +18,8 @@ public sealed class SkillDefinition
         IEnumerable<SkillEffect> effects,
         bool canMoveWhileCasting = false,
         SkillCategory category = SkillCategory.Spell,
-        IReadOnlyDictionary<string, long>? resourceCosts = null)
+        IReadOnlyDictionary<string, long>? resourceCosts = null,
+        Fix64 range = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(durationFrames);
@@ -39,6 +40,12 @@ public sealed class SkillDefinition
         ResourceCosts = new Dictionary<string, long>(
             resourceCosts ?? new Dictionary<string, long>(StringComparer.Ordinal),
             StringComparer.Ordinal);
+        if (range < Fix64.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(range), "Skill range cannot be negative.");
+        }
+
+        Range = range;
 
         ValidateEffects();
         foreach (var (resourceId, amount) in ResourceCosts)
@@ -55,6 +62,7 @@ public sealed class SkillDefinition
     public bool CanMoveWhileCasting { get; }
     public SkillCategory Category { get; }
     public IReadOnlyDictionary<string, long> ResourceCosts { get; }
+    public Fix64 Range { get; }
 
     private void ValidateEffects()
     {
@@ -126,6 +134,20 @@ public sealed class SkillDefinition
             {
                 throw new ArgumentException(
                     $"Skill '{Id}' dash distance must be positive.");
+            }
+
+            if (effect is SkillKnockbackEffect knockback &&
+                knockback.Distance <= Fix64.Zero)
+            {
+                throw new ArgumentException(
+                    $"Skill '{Id}' knockback distance must be positive.");
+            }
+
+            if (effect is SkillPullEffect pull &&
+                pull.Distance <= Fix64.Zero)
+            {
+                throw new ArgumentException(
+                    $"Skill '{Id}' pull distance must be positive.");
             }
         }
     }

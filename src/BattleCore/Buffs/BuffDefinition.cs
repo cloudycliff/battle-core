@@ -49,6 +49,39 @@ public sealed class BuffDefinition
                 throw new ArgumentException("Periodic resource amount cannot be zero.", nameof(effects));
             }
         }
+
+        foreach (var trigger in Effects.OfType<CombatTriggerBuffEffect>())
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(trigger.CooldownFrames);
+            ArgumentNullException.ThrowIfNull(trigger.Actions);
+            if (trigger.Actions.Count == 0)
+            {
+                throw new ArgumentException("Combat trigger must declare at least one action.", nameof(effects));
+            }
+
+            foreach (var action in trigger.Actions)
+            {
+                switch (action)
+                {
+                    case TriggerHealAction heal when heal.Flat == 0 && heal.Ratio == 0:
+                        throw new ArgumentException(
+                            "Trigger heal must have a non-zero flat or ratio.",
+                            nameof(effects));
+                    case TriggerGrantResourceAction resource when resource.Amount == 0:
+                        throw new ArgumentException(
+                            "Trigger resource amount cannot be zero.",
+                            nameof(effects));
+                    case TriggerGrantShieldAction shield when shield.Amount <= 0 || shield.DurationFrames < 0:
+                        throw new ArgumentException(
+                            "Trigger shield amount must be positive and duration non-negative.",
+                            nameof(effects));
+                    case TriggerApplyBuffAction apply when string.IsNullOrWhiteSpace(apply.BuffId):
+                        throw new ArgumentException("Trigger buff id must be set.", nameof(effects));
+                    case TriggerGrantResourceAction resource when string.IsNullOrWhiteSpace(resource.ResourceId):
+                        throw new ArgumentException("Trigger resource id must be set.", nameof(effects));
+                }
+            }
+        }
     }
 
     public string Id { get; }

@@ -280,9 +280,15 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 
 `SkillDashEffect(Frame, Distance)` 使用施法 `Direction` 冲固定距离，朝 `TargetPoint` 冲但不越过该点，或朝 `TargetId` 在效果帧的位置冲固定距离。冲锋复用普通移动的地图、地形和敌对占位阻挡，遇阻缩短，不滑墙、不穿过中途障碍。Root 会阻止施放/生效，被 Carry 的单位不能自行冲锋；载体冲锋时被携带者同步跟随。位移产生 `CharacterMovedEvent`，效果生效产生以施法者为目标的 `SkillHitEvent`。
 
+`SkillKnockbackEffect` 把选中目标推离施法者（或 `AlongCastDirection` 时沿施法方向）；`SkillPullEffect` 拉向施法者，在双方半径相切处停下，不穿进施法者占位圆。二者都走 `FindMovementFraction`。Root 或被携带者不移动；若被推的是载体，被携带者同帧保持 `CarryOffset` 跟随。
+
+技能可设 `Range`：`> 0` 时 `CastSkill` 校验指向点或显式/当前目标（目标型加目标半径）。未配或 ≤0 不限制。自身、施法者中心范围、只有方向没有点的冲锋/弹体不检水平距离。超距拒绝不扣资源、不进 CD。
+
+带非零 `Direction`、`TargetPoint` 或 `TargetId` 的施法在校验通过、时间轴开始时立刻改 `Facing`（step 0 = +X，逆时针 1024 档），之后取消不回滚。自身技能或没有可用瞄准方向的施法不改朝向。仍可用 `SetFacing`。
+
 冷却按逻辑帧。技能可声明一种或多种资源消耗：`BattleConfig` 声明资源 ID 与上限，模板给初值。起手时原子扣除，不够则拒绝且不进 CD。死亡保留当前值。回复用 `GrantResourceCommand`、即时拾取或周期资源 Buff。默认真言类会被沉默阻止起手，武器类会被缴械阻止起手（`SkillCategory`）。眩晕取消当前施法；受伤不打断。V1 不允许取消后摇，整个时间轴结束前不能再次起手。`CanMoveWhileCasting` 控制前摇/后摇能否走。
 
-投射物 V1：直线匀速、碰撞圆、寿命或出界销毁、穿透次数（0 = 第一次有效命中后销毁）。无跟踪、无弹射。区域：地面或跟随目标，按间隔结算；生成时快照来源贡献并自带 RNG，创建者死亡后仍继续。跟随目标进入 Dead 或消失则销毁。
+投射物 V1：直线匀速、碰撞圆、寿命或出界销毁、**默认撞 Terrain AABB 后销毁**（`CollidesWithTerrain: false` 可穿墙）、穿透次数（0 = 第一次有效命中后销毁）。无跟踪、无弹射。点选/自身范围技能不做墙体视线。区域：地面或跟随目标，按间隔结算；生成时快照来源贡献并自带 RNG，创建者死亡后仍继续。跟随目标进入 Dead 或消失则销毁。
 
 ### 5.3.1 Carry
 
@@ -294,11 +300,11 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 
 冻结规则是载体眩晕或任一方死亡时掉落；定身只阻止移动，沉默/缴械不拆关系。被携带者不参与占位阻挡。快照字段：`CarryingId` / `CarriedById`。事件：`CarryStartedEvent`、`CharacterThrownEvent`、`CarryEndedEvent`。
 
-载体因冲锋、击退等技能效果位移时，被携带者应在同帧保持偏移跟随；携带期间不单独碰撞，结束关系时再校正落点。冲锋已按此行为；击退/拉人尚未编码。
+载体因冲锋、击退、拉人等技能效果位移时，被携带者同帧保持偏移跟随；携带期间不单独碰撞，结束关系时再校正落点。
 
 ### 5.4 Buff
 
-Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表。已实现：属性修饰、周期伤/治、控制（晕、沉默、定身、缴械）、免疫 Tag、替换 Tag、按 Tag 驱散。护盾是独立 ShieldLayer，主要由 `GrantShield` / 技能护盾效果创建；移除来源 Buff 不自动拆盾。
+Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表。已实现：属性修饰、周期伤/治/资源、控制（晕、沉默、定身、缴械）、免疫 Tag、替换 Tag、按 Tag 驱散、`ImmuneToDamageBuffEffect`（跳过伤害管道，治疗与控制仍生效）、`UntargetableBuffEffect`（普通选敌与弹/区域跳过；尸体复活选敌不变）、战斗触发（造成伤害 / 受到伤害 / 击杀 / 起手施法）。触发动作是治疗、护盾、资源、上 Buff，不会再开技能时间轴，也不会嵌套再触发；伤害先结算并出 `DamageEvent`，再跑双方触发，然后才判定死亡，所以同帧治疗可以救命。护盾是独立 ShieldLayer，主要由 `GrantShield` / 技能护盾效果创建；移除来源 Buff 不自动拆盾。
 
 ### 5.5 Brain
 
@@ -307,15 +313,15 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 | 种类 | 行为 |
 |------|------|
 | `Idle` | 不发命令 |
-| `ChaseAttack` | 仇恨半径内锁最近敌对；有就绪且在射程内的进攻技能就放，否则走近 |
-| `HoldPosition` | 同样选敌和施法，不追 |
-| `FollowOwner` | 靠近 `OwnerId`；自己或主人已有敌对目标、或仇恨内有敌人时切到 ChaseAttack |
+| `ChaseAttack` | 仇恨半径内锁最近敌对；有就绪且在射程内的进攻技能就放，否则走近。可配 `LeashRadius`：超出则清目标并回出生点，返回期间不选敌、不施法，不回血、不驱散 |
+| `HoldPosition` | 同样选敌和施法，不追；若被位移超出 leash 则回家 |
+| `FollowOwner` | 靠近 `OwnerId`；自己或主人已有敌对目标、或仇恨内有敌人时切到 ChaseAttack（不使用出生点 leash） |
 
-射程：技能上的区域半径优先；显式/当前目标半径为 0 时用 `AttackRange`。只对「敌对/任意」的进攻效果开火，不会拿自我治疗当主循环。
+射程：技能声明了正 `Range` 时用它走近；否则区域半径优先，显式/当前目标半径为 0 时用 `AttackRange`。只对「敌对/任意」的进攻效果开火，不会拿自我治疗当主循环。`PlayerControlled` 不跑 Brain，也不 leash。
 
 ### 5.6 地图与刷怪
 
-单位不能走出 `MapConfig` 边界；弹体出界销毁。地形是静态 AABB。
+单位不能走出 `MapConfig` 边界；弹体出界或默认撞地形后销毁。地形是静态 AABB。
 
 `SpawnPoint.TableEntryId` 指向 `SpawnTableEntry`。条目的 `Frame` 从战斗开始算（第 0 帧是第一次 `Tick`）。同一点 `Count > 1` 会在同一位置刷多只（同阵营可重叠）。
 
@@ -341,7 +347,7 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 ### 命令（均带逻辑帧戳）
 
 移动：方向 / `MoveTo` / 停止。`MoveTo` 直线走，无寻路；被挡无法接近终点则取消。  
-朝向：当前可用 `SetFacing`（受伤不转向）。冻结规则还要求带方向/目标点的 `CastSkill` 起手成功时自动转向且取消不回滚；该项尚未编码。全圆 1024 档。  
+朝向：`SetFacing`，或带方向/目标点/显式目标的 `CastSkill` 起手成功时自动转向（取消不回滚）。受伤不转向。全圆 1024 档，step 0 朝 +X。  
 目标：`SetTarget` 软锁；技能是否打它由选敌器决定。  
 战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、`GrantResource`、Buff 添加/移除/驱散、`Revive`（允许复活且未被禁止复活的友方 Dead）。
 生成：`SpawnCharacter`（可 `BrainId`、`OwnerId`、覆盖初始 HP、开局 `ModifierSources`）、`SpawnPickup`。

@@ -1,4 +1,5 @@
 using BattleCore.Attributes;
+using BattleCore.Buffs;
 using BattleCore.Combat;
 using BattleCore.Randomness;
 using BattleCore.Simulation.Commands;
@@ -117,6 +118,11 @@ public sealed partial class BattleInstance
             return;
         }
 
+        if (target.HasImmuneToDamage)
+        {
+            return;
+        }
+
         var hit = snapshot?.ComputeBase(command.AttributeId, command.Flat, command.Ratio)
             ?? ComputeBase(liveSource!, command.AttributeId, command.Flat, command.Ratio);
         var wasCrit = false;
@@ -183,9 +189,35 @@ public sealed partial class BattleInstance
             shieldAbsorbed,
             wasCrit));
 
+        var source = _characters.GetValueOrDefault(command.SourceId);
+        FireCombatTriggers(
+            CombatTriggerKind.DealDamage,
+            source,
+            target,
+            hitLanded: hpDamage + shieldAbsorbed > 0,
+            wasCrit,
+            command.DamageType,
+            events);
+        FireCombatTriggers(
+            CombatTriggerKind.TakeDamage,
+            target,
+            source,
+            hitLanded: hpDamage + shieldAbsorbed > 0,
+            wasCrit,
+            command.DamageType,
+            events);
+
         if (target.CurrentHp <= 0)
         {
             Kill(target, command.SourceId, events);
+            FireCombatTriggers(
+                CombatTriggerKind.Kill,
+                source,
+                target,
+                hitLanded: true,
+                wasCrit,
+                command.DamageType,
+                events);
         }
     }
 

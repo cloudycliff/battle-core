@@ -248,7 +248,7 @@ public sealed class BattleConfig
         foreach (var buff in BuffDefinitions.Values)
         {
             foreach (var attributeId in buff.Effects
-                         .Select(GetBuffAttributeId)
+                         .SelectMany(GetBuffAttributeIds)
                          .Where(attributeId => attributeId is not null))
             {
                 if (!AttributeIds.Contains(attributeId!))
@@ -260,11 +260,28 @@ public sealed class BattleConfig
 
             foreach (var resourceId in buff.Effects
                          .OfType<PeriodicResourceBuffEffect>()
-                         .Select(effect => effect.ResourceId))
+                         .Select(effect => effect.ResourceId)
+                         .Concat(buff.Effects
+                             .OfType<CombatTriggerBuffEffect>()
+                             .SelectMany(effect => effect.Actions)
+                             .OfType<TriggerGrantResourceAction>()
+                             .Select(action => action.ResourceId)))
             {
                 if (!ResourceDefinitions.ContainsKey(resourceId))
                 {
                     errors.Add($"Buff '{buff.Id}' references undeclared resource '{resourceId}'.");
+                }
+            }
+
+            foreach (var buffId in buff.Effects
+                         .OfType<CombatTriggerBuffEffect>()
+                         .SelectMany(effect => effect.Actions)
+                         .OfType<TriggerApplyBuffAction>()
+                         .Select(action => action.BuffId))
+            {
+                if (!BuffDefinitions.ContainsKey(buffId))
+                {
+                    errors.Add($"Buff '{buff.Id}' references unknown buff '{buffId}'.");
                 }
             }
         }
@@ -342,13 +359,16 @@ public sealed class BattleConfig
             _ => null,
         };
 
-    private static string? GetBuffAttributeId(BuffEffect effect) =>
+    private static IEnumerable<string?> GetBuffAttributeIds(BuffEffect effect) =>
         effect switch
         {
-            AttributeBuffEffect attribute => attribute.AttributeId,
-            PeriodicDamageBuffEffect damage => damage.AttributeId,
-            PeriodicHealBuffEffect heal => heal.AttributeId,
-            _ => null,
+            AttributeBuffEffect attribute => [attribute.AttributeId],
+            PeriodicDamageBuffEffect damage => [damage.AttributeId],
+            PeriodicHealBuffEffect heal => [heal.AttributeId],
+            CombatTriggerBuffEffect trigger => trigger.Actions
+                .OfType<TriggerHealAction>()
+                .Select(action => action.AttributeId),
+            _ => [],
         };
 
     private void ValidateHitCatalog(

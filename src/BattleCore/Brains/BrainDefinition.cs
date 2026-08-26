@@ -17,7 +17,8 @@ public sealed class BrainDefinition
         BrainKind kind,
         Fix64? aggroRadius = null,
         Fix64? attackRange = null,
-        Fix64? followDistance = null)
+        Fix64? followDistance = null,
+        Fix64? leashRadius = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
@@ -26,6 +27,7 @@ public sealed class BrainDefinition
         AggroRadius = aggroRadius ?? Fix64.FromInt(12);
         AttackRange = attackRange ?? Fix64.One;
         FollowDistance = followDistance ?? Fix64.FromInt(2);
+        LeashRadius = leashRadius ?? Fix64.Zero;
 
         if (Kind != BrainKind.Idle)
         {
@@ -50,6 +52,13 @@ public sealed class BrainDefinition
                 nameof(followDistance),
                 "Follow distance cannot be negative.");
         }
+
+        if (LeashRadius < Fix64.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(leashRadius),
+                "Leash radius cannot be negative.");
+        }
     }
 
     public string Id { get; }
@@ -57,4 +66,5 @@ public sealed class BrainDefinition
     public Fix64 AggroRadius { get; }
     public Fix64 AttackRange { get; }
     public Fix64 FollowDistance { get; }
+    public Fix64 LeashRadius { get; }
 }

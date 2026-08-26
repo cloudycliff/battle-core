@@ -27,6 +27,8 @@ internal sealed class CharacterState
     public FixVector2 CarryOffset { get; set; }
 
     public Facing Facing { get; set; } = new(0);
+    public FixVector2 SpawnOrigin { get; set; }
+    public bool ReturningToLeash { get; set; }
     public long? CurrentTargetId { get; set; }
     public MovementIntent Movement { get; set; } = MovementIntent.None;
     public LifeState LifeState { get; set; } = LifeState.Alive;
@@ -51,7 +53,15 @@ internal sealed class CharacterState
         !HasControl(ControlType.Root);
 
     public bool IsSelectable =>
-        LifeState == LifeState.Alive && Template.Targetable;
+        LifeState == LifeState.Alive &&
+        Template.Targetable &&
+        !HasUntargetable;
+
+    public bool HasImmuneToDamage =>
+        Buffs.Any(buff => buff.Definition.Effects.OfType<ImmuneToDamageBuffEffect>().Any());
+
+    public bool HasUntargetable =>
+        Buffs.Any(buff => buff.Definition.Effects.OfType<UntargetableBuffEffect>().Any());
 
     public bool CanBeRevived =>
         Template.CanBeRevived &&
@@ -99,7 +109,7 @@ internal sealed class CharacterState
             Controls,
             PlayerControlled,
             IsSelectable,
-            Template.Damageable && CanAct,
+            Template.Damageable && CanAct && !HasImmuneToDamage,
             Template.BlocksMovement,
             CanBeRevived,
             OwnerId,

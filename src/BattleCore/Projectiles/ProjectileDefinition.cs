@@ -13,7 +13,8 @@ public sealed class ProjectileDefinition
         int lifetimeFrames,
         int pierceCount,
         TargetRelation relation,
-        IEnumerable<HitEffect> hitEffects)
+        IEnumerable<HitEffect> hitEffects,
+        bool collidesWithTerrain = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(lifetimeFrames);
@@ -37,6 +38,7 @@ public sealed class ProjectileDefinition
         PierceCount = pierceCount;
         Relation = relation;
         HitEffects = hitEffects.ToArray();
+        CollidesWithTerrain = collidesWithTerrain;
     }
 
     public string Id { get; }
@@ -46,4 +48,5 @@ public sealed class ProjectileDefinition
     public int PierceCount { get; }
     public TargetRelation Relation { get; }
     public IReadOnlyList<HitEffect> HitEffects { get; }
+    public bool CollidesWithTerrain { get; }
 }

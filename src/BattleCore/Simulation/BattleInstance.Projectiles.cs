@@ -151,20 +151,38 @@ public sealed partial class BattleInstance
     {
         foreach (var projectile in _projectiles.Values.ToArray())
         {
+            if (TryDespawnProjectileOnTerrain(projectile, events))
+            {
+                continue;
+            }
+
             if (TryCollideProjectile(projectile, events))
             {
                 continue;
             }
 
             var from = projectile.Position;
-            projectile.Position += projectile.Velocity;
-            events.Add(new ProjectileMovedEvent(
-                CurrentFrame,
-                projectile.Id,
-                from,
-                projectile.Position));
+            var destination = from + projectile.Velocity;
+            var blockedByTerrain = false;
+            if (projectile.Definition.CollidesWithTerrain)
+            {
+                var lastSafe = LastSafeProjectilePosition(from, projectile.Velocity, projectile.Definition.Radius);
+                blockedByTerrain = lastSafe != destination;
+                destination = lastSafe;
+            }
 
-            if (!_map.Bounds.ContainsCircle(projectile.Position, projectile.Definition.Radius) ||
+            projectile.Position = destination;
+            if (destination != from)
+            {
+                events.Add(new ProjectileMovedEvent(
+                    CurrentFrame,
+                    projectile.Id,
+                    from,
+                    projectile.Position));
+            }
+
+            if (blockedByTerrain ||
+                !_map.Bounds.ContainsCircle(projectile.Position, projectile.Definition.Radius) ||
                 CurrentFrame >= projectile.ExpiryFrame)
             {
                 DespawnProjectile(projectile, events);
@@ -174,6 +192,60 @@ public sealed partial class BattleInstance
             TryCollideProjectile(projectile, events);
         }
     }
+
+    private bool TryDespawnProjectileOnTerrain(
+        ProjectileState projectile,
+        List<BattleEvent> events)
+    {
+        if (!projectile.Definition.CollidesWithTerrain ||
+            !IntersectsTerrain(projectile.Position, projectile.Definition.Radius))
+        {
+            return false;
+        }
+
+        DespawnProjectile(projectile, events);
+        return true;
+    }
+
+    private FixVector2 LastSafeProjectilePosition(FixVector2 from, FixVector2 delta, Fix64 radius)
+    {
+        if (delta == FixVector2.Zero || IntersectsTerrain(from + delta, radius) is false)
+        {
+            return from + delta;
+        }
+
+        if (IntersectsTerrain(from, radius))
+        {
+            return from;
+        }
+
+        var maximumAxisDistance = Fix64.Max(Fix64.Abs(delta.X), Fix64.Abs(delta.Y));
+        var sampleDistanceRaw = System.Math.Max(1, radius.RawValue / 2);
+        var sampleCount = maximumAxisDistance.RawValue / sampleDistanceRaw;
+        if (maximumAxisDistance.RawValue % sampleDistanceRaw != 0)
+        {
+            sampleCount++;
+        }
+
+        sampleCount = System.Math.Max(1, sampleCount);
+        var previous = from;
+        for (long sample = 1; sample <= sampleCount; sample++)
+        {
+            var fraction = Fix64.FromRatio(sample, sampleCount);
+            var candidate = from + (delta * fraction);
+            if (IntersectsTerrain(candidate, radius))
+            {
+                return previous;
+            }
+
+            previous = candidate;
+        }
+
+        return from + delta;
+    }
+
+    private bool IntersectsTerrain(FixVector2 position, Fix64 radius) =>
+        _map.Terrain.Any(blocker => blocker.IntersectsCircle(position, radius));
 
     private bool TryCollideProjectile(ProjectileState projectile, List<BattleEvent> events)
     {

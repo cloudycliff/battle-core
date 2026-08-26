@@ -173,6 +173,7 @@ public sealed partial class BattleInstance
             Lives = template.Lives,
             Brain = brain,
             OwnerId = command.OwnerId,
+            SpawnOrigin = command.Position,
         };
         foreach (var resource in _config.ResourceDefinitions.Values)
         {

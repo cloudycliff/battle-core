@@ -35,6 +35,7 @@ public sealed partial class BattleInstance
     private long _nextBuffId = 1;
     private long _nextModifierId = 1;
     private bool _timeoutEmitted;
+    private bool _firingCombatTriggers;
 
     public BattleInstance(
         BattleConfig config,

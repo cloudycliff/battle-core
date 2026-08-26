@@ -26,9 +26,19 @@ public sealed partial class BattleInstance
                 case BrainKind.Idle:
                     break;
                 case BrainKind.HoldPosition:
+                    if (TryReturnToLeash(actor, brain))
+                    {
+                        break;
+                    }
+
                     ThinkHoldPosition(actor, brain);
                     break;
                 case BrainKind.ChaseAttack:
+                    if (TryReturnToLeash(actor, brain))
+                    {
+                        break;
+                    }
+
                     ThinkChaseAttack(actor, brain);
                     break;
                 case BrainKind.FollowOwner:
@@ -99,6 +109,47 @@ public sealed partial class BattleInstance
         }
 
         StopIfMoving(actor);
+    }
+
+    private bool TryReturnToLeash(CharacterState actor, BrainDefinition brain)
+    {
+        if (brain.LeashRadius <= Fix64.Zero ||
+            actor.PlayerControlled)
+        {
+            return false;
+        }
+
+        var distanceSquared = FixVector2.DistanceSquared(actor.Position, actor.SpawnOrigin);
+        var leashSquared = brain.LeashRadius * brain.LeashRadius;
+        if (distanceSquared > leashSquared)
+        {
+            actor.ReturningToLeash = true;
+        }
+
+        if (!actor.ReturningToLeash)
+        {
+            return false;
+        }
+
+        var arrival = actor.Template.Radius;
+        if (distanceSquared <= arrival * arrival)
+        {
+            actor.ReturningToLeash = false;
+            StopIfMoving(actor);
+            return false;
+        }
+
+        if (actor.CurrentTargetId is not null)
+        {
+            Enqueue(new SetTargetCommand(CurrentFrame, actor.Id, null));
+        }
+
+        if (actor.CanMove)
+        {
+            Enqueue(new MoveToCommand(CurrentFrame, actor.Id, actor.SpawnOrigin));
+        }
+
+        return true;
     }
 
     private bool IsInCombat(CharacterState actor, BrainDefinition brain)
@@ -310,6 +361,11 @@ public sealed partial class BattleInstance
 
     private static Fix64 SkillRange(SkillDefinition skill, BrainDefinition brain)
     {
+        if (skill.Range > Fix64.Zero)
+        {
+            return skill.Range;
+        }
+
         var radius = Fix64.Zero;
         foreach (var effect in skill.Effects.Where(IsOffensiveEffect))
         {

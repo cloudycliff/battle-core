@@ -85,3 +85,16 @@ public sealed record SkillDashEffect(
     int Frame,
     Fix64 Distance)
     : SkillEffect(Frame, SkillTarget.Self);
+
+public sealed record SkillKnockbackEffect(
+    int Frame,
+    SkillTarget Target,
+    Fix64 Distance,
+    bool AlongCastDirection = false)
+    : SkillEffect(Frame, Target);
+
+public sealed record SkillPullEffect(
+    int Frame,
+    SkillTarget Target,
+    Fix64 Distance)
+    : SkillEffect(Frame, Target);
