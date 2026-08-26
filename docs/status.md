@@ -26,6 +26,7 @@
 - 弹体默认撞地形 AABB 销毁（可关）
 - 技能击退 / 拉人（Root / 被携带不移动；载体位移同帧跟随 Carry）
 - `ImmuneToDamageBuffEffect` / `UntargetableBuffEffect`
+- JSON 样例加载器（`BattleJson`；战斗中不热更）
 - ChaseAttack / HoldPosition 出生点 leash
 - Buff 战斗触发：造成伤害 / 受到伤害 / 击杀 / 起手施法（一层、可同帧治疗救命）
 
@@ -43,7 +44,6 @@
 
 | 项 | 状态 |
 |----|------|
-| JSON schema / 样例加载器 | 未做；核只认内存表 |
 | 刷怪表战斗 RNG 随机组成 | 未做；表现全确定 |
 
 ---

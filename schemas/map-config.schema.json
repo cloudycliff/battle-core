@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://battle-core.local/schemas/map-config.schema.json",
+  "$ref": "battle-bundle.schema.json#/definitions/mapConfig"
+}

@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://battle-core.local/schemas/battle-bundle.schema.json",
+  "title": "Battle Core JSON bundle",
+  "description": "Optional combined document for BattleJson.LoadBundle. Enums use C# identifier spelling (True, ExplicitTarget, ChaseAttack). Effect kind strings are camelCase.",
+  "type": "object",
+  "required": ["battle", "map", "seed", "maxFrames"],
+  "properties": {
+    "battle": { "$ref": "#/definitions/battleConfig" },
+    "map": { "$ref": "#/definitions/mapConfig" },
+    "spawnTable": { "$ref": "#/definitions/spawnTable" },
+    "seed": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] },
+    "maxFrames": { "type": "integer", "minimum": 1 }
+  },
+  "definitions": {
+    "fix64": { "$ref": "fix64.schema.json" },
+    "vec2": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "$ref": "#/definitions/fix64" },
+        "y": { "$ref": "#/definitions/fix64" }
+      }
+    },
+    "aabb": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "$ref": "#/definitions/vec2" },
+        "max": { "$ref": "#/definitions/vec2" }
+      }
+    },
+    "battleConfig": {
+      "type": "object",
+      "required": ["attributeIds", "bindings", "characterTemplates"],
+      "properties": {
+        "attributeIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "bindings": {
+          "type": "object",
+          "required": ["maxHp", "physicalDefense", "magicalDefense", "critRate", "critDamage", "damageDealt", "damageTaken", "moveSpeed"],
+          "properties": {
+            "maxHp": { "type": "string" },
+            "physicalDefense": { "type": "string" },
+            "magicalDefense": { "type": "string" },
+            "critRate": { "type": "string" },
+            "critDamage": { "type": "string" },
+            "damageDealt": { "type": "string" },
+            "damageTaken": { "type": "string" },
+            "moveSpeed": { "type": "string" }
+          }
+        },
+        "characterTemplates": { "type": "array", "items": { "$ref": "#/definitions/characterTemplate" } },
+        "skills": { "type": "array", "items": { "type": "object", "required": ["id", "durationFrames", "cooldownFrames", "effects"] } },
+        "buffs": { "type": "array", "items": { "type": "object" } },
+        "projectiles": { "type": "array", "items": { "type": "object" } },
+        "areaEffects": { "type": "array", "items": { "type": "object" } },
+        "brains": { "type": "array", "items": { "type": "object" } },
+        "pickups": { "type": "array", "items": { "type": "object" } },
+        "resources": { "type": "array", "items": { "type": "object" } },
+        "defenseK": { "type": "integer" },
+        "maximumMitigation": { "type": "integer" },
+        "minimumDamage": { "type": "integer" },
+        "corpseDurationFrames": { "type": "integer" },
+        "reviveDelayFrames": { "type": "integer" }
+      }
+    },
+    "characterTemplate": {
+      "type": "object",
+      "required": ["id", "radius", "baseAttributes"],
+      "properties": {
+        "id": { "type": "string" },
+        "radius": { "$ref": "#/definitions/fix64" },
+        "baseAttributes": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "targetable": { "type": "boolean" },
+        "damageable": { "type": "boolean" },
+        "blocksMovement": { "type": "boolean" },
+        "lives": { "type": "integer", "minimum": 0 },
+        "skillIds": { "type": "array", "items": { "type": "string" } },
+        "brainId": { "type": "string" },
+        "canBeRevived": { "type": "boolean" },
+        "baseResources": { "type": "object", "additionalProperties": { "type": "integer" } }
+      }
+    },
+    "mapConfig": {
+      "type": "object",
+      "required": ["bounds"],
+      "properties": {
+        "bounds": { "$ref": "#/definitions/aabb" },
+        "terrain": { "type": "array", "items": { "$ref": "#/definitions/aabb" } },
+        "spawnPoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "position", "tableEntryId"],
+            "properties": {
+              "id": { "type": "string" },
+              "position": { "$ref": "#/definitions/vec2" },
+              "tableEntryId": { "type": "string" }
+            }
+          }
+        },
+        "playerSpawnMarkers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "position"],
+            "properties": {
+              "id": { "type": "string" },
+              "position": { "$ref": "#/definitions/vec2" }
+            }
+          }
+        }
+      }
+    },
+    "spawnTable": {
+      "oneOf": [
+        { "type": "array", "items": { "$ref": "#/definitions/spawnEntry" } },
+        {
+          "type": "object",
+          "properties": {
+            "entries": { "type": "array", "items": { "$ref": "#/definitions/spawnEntry" } }
+          }
+        }
+      ]
+    },
+    "spawnEntry": {
+      "type": "object",
+      "required": ["id", "templateId", "factionId", "frame"],
+      "properties": {
+        "id": { "type": "string" },
+        "templateId": { "type": "string" },
+        "factionId": { "type": "integer" },
+        "frame": { "type": "integer", "minimum": 0 },
+        "count": { "type": "integer", "minimum": 1 },
+        "brainId": { "type": "string" }
+      }
+    }
+  }
+}

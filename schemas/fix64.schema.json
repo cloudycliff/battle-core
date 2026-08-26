@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://battle-core.local/schemas/fix64.schema.json",
+  "title": "Fix64",
+  "description": "Q16.16 spatial value. Integer meters, rational n/d, or raw. JSON floats are rejected by the loader.",
+  "oneOf": [
+    { "type": "integer" },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw"],
+      "properties": { "raw": { "type": "integer" } }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n", "d"],
+      "properties": {
+        "n": { "type": "integer" },
+        "d": { "type": "integer", "not": { "const": 0 } }
+      }
+    }
+  ]
+}

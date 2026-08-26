@@ -78,10 +78,11 @@ dotnet test BattleCore.slnx --configuration Release
 
 | 缺口 | 宿主怎么做 |
 |------|------------|
-| 无 JSON 加载器 | 任何格式在核外反序列化，再 `new` 内存配置 |
 | 刷怪表随机组成未做 | 表项表现保持确定 |
 
-已能用、不要在宿主再实现一遍：伤害管道、资源起手消耗、射程与起手转向、弹体撞墙、击退/拉人、免疫/不可选中、出生点 leash、战斗触发、Carry、即时/Stash 拾取、按帧刷怪、ModifierSource 换装。
+已能用、不要在宿主再实现一遍：伤害管道、资源起手消耗、射程与起手转向、弹体撞墙、击退/拉人、免疫/不可选中、出生点 leash、战斗触发、Carry、即时/Stash 拾取、按帧刷怪、ModifierSource 换装、JSON 配表加载。
+
+核仍吃内存配置。JSON 只是附带加载器：`BattleJson`（`schemas/` + `samples/arena.bundle.json`）。你也可以继续用别的格式在核外反序列化。
 
 ---
 

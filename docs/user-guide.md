@@ -4,7 +4,7 @@
 
 术语和冻结规则以 [CONTEXT.md](../CONTEXT.md)、[V1 需求](v1-requirements.md) 与对应 [ADR](adr/) 为准。本页只说明当前接入方式，不另行定义行为。
 
-当前配置入口是**内存对象**（C# 构造）。没有 JSON 加载器；你可以用任何格式在核外反序列化，再 new 这些类型。
+当前配置入口是**内存对象**（C# 构造）。也可以用附带的 JSON 加载器：`BattleJson.LoadBattleConfig` / `LoadMapConfig` / `LoadSpawnTable` / `LoadBundle`。Schema 在 [schemas/](../schemas/)，样例在 [samples/arena.bundle.json](../samples/arena.bundle.json)。你仍可用任何格式在核外反序列化，再 `new` 这些类型。战斗中不能热更。
 
 ---
 
@@ -235,6 +235,17 @@ new BattleInstance(battleConfig, map, seed, maxFrames, spawnTable);
 
 `spawnTable` 可省略（空表）。非法引用（未知模板、未知 Brain、点位出界、点引用了不存在的表条目）在构造时抛 `ConfigurationException`。
 
+JSON：
+
+```csharp
+using BattleCore.Serialization;
+
+var bundle = BattleJson.LoadBundle(File.ReadAllText("samples/arena.bundle.json"));
+var battle = bundle.CreateBattle();
+```
+
+空间量必须是整数米、`{"n":1,"d":2}` 或 `{"raw":32768}`，**不要写 JSON 浮点**（如 `0.5`）。枚举用 C# 标识符（`True`、`ExplicitTarget`、`ChaseAttack`）；效果 `kind` 用 camelCase（`damage`、`applyBuff`）。
+
 战斗中**不能**换表。要改数值就新建一场。
 
 ---
@@ -371,9 +382,9 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 
 ## 8. 现在能做什么 / 先别指望什么
 
-**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋）、直线穿透弹、区域效果（来源快照与独立 RNG）、Buff 与控制、四种 Brain、技能召唤 Character、Carry（抓/带/投/放）、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源（装备换装）、技能资源池、按帧刷怪表、`maxFrames` 超时。
+**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋/击退/拉人）、直线穿透弹（可撞地形）、区域效果（来源快照与独立 RNG）、Buff（含战斗触发、伤害免疫、不可选中）与控制、四种 Brain（含 leash）、技能召唤 Character、Carry、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源、技能资源池、按帧刷怪表、JSON 样例加载器、`maxFrames` 超时。
 
-**V1 写了但还没做：** JSON schema/样例加载器、Buff 战斗触发（已设计未编码）、指向技能自动改朝向、战斗级 RNG 用于随机组成（刷怪当前是全确定表）。进度总表见 [status.md](status.md)。
+**V1 写了但还没做：** 战斗级 RNG 用于随机组成（刷怪当前是全确定表）。进度总表见 [status.md](status.md)。
 
 **V1 明确不做：** 引导施法、A*、滑墙互推、跟踪弹/弹射、清波/进区刷怪、外交矩阵、可破坏地形、背包真源、FrameHash/回放、把 Godot 放进本仓。
 

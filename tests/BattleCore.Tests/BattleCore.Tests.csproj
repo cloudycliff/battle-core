@@ -23,4 +23,8 @@
     <ProjectReference Include="..\..\src\BattleCore\BattleCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\samples\**\*" CopyToOutputDirectory="PreserveNewest" Link="samples\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
