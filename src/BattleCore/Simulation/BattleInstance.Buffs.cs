@@ -196,6 +196,13 @@ public sealed partial class BattleInstance
         instance.ModifierIds.Clear();
         foreach (var effect in instance.Definition.Effects.OfType<AttributeBuffEffect>())
         {
+            // Buffs can land on any character; skip modifiers for attributes
+            // the target's template never declared instead of throwing.
+            if (!target.Attributes.Contains(effect.AttributeId))
+            {
+                continue;
+            }
+
             var modifierId = _nextModifierId++;
             target.Attributes.Add(new AttributeModifier(
                 modifierId,

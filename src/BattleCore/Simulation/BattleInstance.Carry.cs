@@ -188,18 +188,62 @@ public sealed partial class BattleInstance
         }
     }
 
+    private static readonly FixVector2[] DropSearchDirections =
+    [
+        new(Fix64.One, Fix64.Zero),
+        new(-Fix64.One, Fix64.Zero),
+        new(Fix64.Zero, Fix64.One),
+        new(Fix64.Zero, -Fix64.One),
+        new(Fix64.One, Fix64.One),
+        new(Fix64.One, -Fix64.One),
+        new(-Fix64.One, Fix64.One),
+        new(-Fix64.One, -Fix64.One),
+    ];
+
+    /// <summary>
+    /// A carried unit follows the carrier without collision (ADR 0004), so
+    /// its position can be inside terrain when the carry ends. The landing
+    /// spot must be re-validated for the carried unit's own radius and
+    /// faction; the carrier's position is not automatically legal for it.
+    /// The ring search is a fixed deterministic pattern.
+    /// </summary>
     private void RelocateIfInvalid(CharacterState carried, CharacterState carrier)
     {
-        if (IsPositionValid(
-                carried.Position,
-                carried.Template.Radius,
-                carried.FactionId,
-                carried.Template.BlocksMovement,
-                carried.Id))
+        if (IsValidLanding(carried, carried.Position))
         {
             return;
         }
 
+        if (IsValidLanding(carried, carrier.Position))
+        {
+            carried.Position = carrier.Position;
+            return;
+        }
+
+        var step = Fix64.Max(carried.Template.Radius, carrier.Template.Radius);
+        for (var ring = 1; ring <= 8; ring++)
+        {
+            var distance = step * Fix64.FromInt(ring);
+            foreach (var direction in DropSearchDirections)
+            {
+                var candidate = carrier.Position + (direction * distance);
+                if (IsValidLanding(carried, candidate))
+                {
+                    carried.Position = candidate;
+                    return;
+                }
+            }
+        }
+
+        // Degenerate map with no nearby opening: keep historical behavior.
         carried.Position = carrier.Position;
     }
+
+    private bool IsValidLanding(CharacterState carried, FixVector2 position) =>
+        IsPositionValid(
+            position,
+            carried.Template.Radius,
+            carried.FactionId,
+            carried.Template.BlocksMovement,
+            carried.Id);
 }

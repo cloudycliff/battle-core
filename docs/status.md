@@ -4,7 +4,9 @@
 
 宿主 / 外围 agent 入口：[host-handoff.md](host-handoff.md)。怎么 Tick：[user-guide.md](user-guide.md)。测试表示当前代码实际行为；若测试与冻结规则冲突，视为实现或文档漂移，不自动改变规则。
 
-最后更新：2026-08-26。
+最后更新：2026-08-28。
+
+> **2026-08-28 审查与修复**：两轮全面审查见 [review-2026-08-28.md](review-2026-08-28.md) 与 [review-2026-08-28-round2.md](review-2026-08-28-round2.md)。第一批 8 项已修（弹体扫掠、NormalizeOrZero 除零、属性缺失防崩、眩晕取消时间轴、PreventRevive 挡 Lives、非阻挡单位撞地形、Carry 落点复验、确定性黄金回归测试），其余问题按 round2 文档「合并修复顺序」排队。
 
 ---
 

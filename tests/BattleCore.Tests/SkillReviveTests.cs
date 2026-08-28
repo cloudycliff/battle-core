@@ -167,6 +167,51 @@ public sealed class SkillReviveTests
         Assert.Single(battle.Tick().OfType<RevivedEvent>());
     }
 
+    [Fact]
+    public void PreventReviveBuff_DelaysLivesCountdownStandUpUntilBuffEnds()
+    {
+        // Review round-2 N2: the Lives revive path used to ignore
+        // PreventRevive entirely and stand the character up on schedule.
+        var preventRevive = new BuffDefinition(
+            "seal",
+            durationFrames: 6,
+            BuffStackingRule.Unique,
+            [new PreventReviveBuffEffect()]);
+        var battle = CreateBattle(
+            ReviveSkill(),
+            lives: 1,
+            reviveDelayFrames: 2,
+            buffDefinitions: [preventRevive]);
+        battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
+        battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(8, 2)));
+        battle.Tick();
+        battle.Enqueue(new ApplyBuffCommand(1, 1, 2, preventRevive.Id));
+        battle.Tick();
+        battle.Enqueue(new DealDamageCommand(2, 1, 2, DamageType.True, 200, CanCrit: false));
+        battle.Tick();
+        Assert.Equal(LifeState.Reviving, battle.GetCharacter(2)!.LifeState);
+
+        var revived = new List<long>();
+        for (var frame = 3; frame <= 6; frame++)
+        {
+            revived.AddRange(battle.Tick()
+                .OfType<RevivedEvent>()
+                .Select(item => item.CharacterId));
+            if (frame < 6)
+            {
+                Assert.Equal(LifeState.Reviving, battle.GetCharacter(2)!.LifeState);
+            }
+        }
+
+        Assert.Empty(revived);
+
+        var standUpEvents = battle.Tick();
+
+        Assert.Single(standUpEvents.OfType<RevivedEvent>());
+        Assert.Equal(LifeState.Alive, battle.GetCharacter(2)!.LifeState);
+        Assert.Equal(0, battle.GetCharacter(2)!.Lives);
+    }
+
     private static BattleInstance CreateBattle(
         SkillDefinition skill,
         int lives = 0,

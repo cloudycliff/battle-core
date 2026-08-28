@@ -16,6 +16,13 @@ public readonly record struct FixVector2(Fix64 X, Fix64 Y)
         var length = Fix64.FromRaw(IntegerSquareRoot(
             checked((ulong)LengthSquared.RawValue << Fix64.FractionalBits)));
 
+        // Sub-resolution vectors (length below 1/65536 m) square to zero in
+        // Q16.16; treat them as no direction instead of dividing by zero.
+        if (length.RawValue == 0)
+        {
+            return Zero;
+        }
+
         return new FixVector2(X / length, Y / length);
     }
 

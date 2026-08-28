@@ -116,7 +116,8 @@ public sealed partial class BattleInstance
             : null;
 
     public long? GetAttribute(long characterId, string attributeId) =>
-        _characters.TryGetValue(characterId, out var character)
+        _characters.TryGetValue(characterId, out var character) &&
+        character.Attributes.Contains(attributeId)
             ? character.Attributes.Get(attributeId)
             : null;
 

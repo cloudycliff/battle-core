@@ -28,6 +28,16 @@ public sealed class Fix64Tests
     }
 
     [Fact]
+    public void NormalizeOrZero_ReturnsZeroForSubResolutionVectors()
+    {
+        var tiny = new FixVector2(Fix64.FromRaw(1), Fix64.Zero);
+        var tinyDiagonal = new FixVector2(Fix64.FromRaw(200), Fix64.FromRaw(-200));
+
+        Assert.Equal(FixVector2.Zero, tiny.NormalizeOrZero());
+        Assert.Equal(FixVector2.Zero, tinyDiagonal.NormalizeOrZero());
+    }
+
+    [Fact]
     public void Facing_FromDirection_UsesQuarterTurnAxes()
     {
         Assert.Equal(0, Facing.FromDirection(new FixVector2(Fix64.One, Fix64.Zero)).Step);

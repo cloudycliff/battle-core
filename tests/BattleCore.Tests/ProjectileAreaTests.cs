@@ -65,6 +65,36 @@ public sealed class ProjectileAreaTests
     }
 
     [Fact]
+    public void Projectile_FastBoltSweepsInsteadOfTunneling()
+    {
+        // 60 m/s = 2 m per frame; the 1.4 m hit window between discrete
+        // endpoints used to be skipped entirely (review 2026-08-28 #1).
+        var projectile = new ProjectileDefinition(
+            "fast_bolt",
+            Fix64.FromInt(60),
+            Fix64.FromRatio(1, 5),
+            lifetimeFrames: 30,
+            pierceCount: 0,
+            TargetRelation.Enemies,
+            [new HitDamageEffect(DamageType.True, 20, CanCrit: false)]);
+        var skill = FireSkill(projectile.Id);
+        var battle = CreateBattle(skill, [projectile]);
+        SpawnPair(battle);
+        battle.Enqueue(new CastSkillCommand(1, 1, skill.Id, Direction: Point(1, 0)));
+
+        var hits = new List<ProjectileHitEvent>();
+        for (var i = 0; i < 10; i++)
+        {
+            hits.AddRange(battle.Tick().OfType<ProjectileHitEvent>());
+        }
+
+        var hit = Assert.Single(hits);
+        Assert.Equal(2, hit.TargetId);
+        Assert.Equal(80, battle.GetCharacter(2)!.CurrentHp);
+        Assert.Empty(battle.GetProjectiles());
+    }
+
+    [Fact]
     public void AreaEffect_TicksThenExpires()
     {
         var area = new AreaEffectDefinition(

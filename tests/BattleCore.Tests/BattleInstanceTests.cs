@@ -70,6 +70,53 @@ public sealed class BattleInstanceTests
     }
 
     [Fact]
+    public void NonBlockingUnit_IgnoresEnemiesButNotTerrain()
+    {
+        // Review round-2 N3: blocksMovement=false used to skip terrain too.
+        var wall = new FixAabb(Point(3, 0), Point(4, 5));
+        var walled = TestBattleFactory.CreateBattle(
+            TestBattleFactory.CreateConfig(blocksMovement: false),
+            terrain: [wall]);
+        walled.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
+        walled.Tick();
+        walled.Enqueue(new MoveDirectionCommand(1, 1, Point(1, 0)));
+        for (var frame = 1; frame <= 30; frame++)
+        {
+            walled.Tick();
+        }
+
+        var stoppedX = walled.GetCharacter(1)!.Position.X;
+        Assert.True(stoppedX <= Fix64.FromRatio(5, 2), $"clipped into wall at x={stoppedX}");
+        Assert.True(stoppedX > Fix64.FromInt(2), "never moved at all");
+
+        var open = TestBattleFactory.CreateBattle(
+            TestBattleFactory.CreateConfig(blocksMovement: false));
+        open.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
+        open.Enqueue(new SpawnCharacterCommand(0, "hero", 2, Point(3, 2)));
+        open.Tick();
+        open.Enqueue(new MoveDirectionCommand(1, 1, Point(1, 0)));
+
+        Assert.Single(open.Tick().OfType<CharacterMovedEvent>());
+    }
+
+    [Fact]
+    public void Tick_SurvivesSubResolutionMoveDirection()
+    {
+        var battle = TestBattleFactory.CreateBattle();
+        battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
+        battle.Tick();
+        battle.Enqueue(new MoveDirectionCommand(
+            1,
+            1,
+            new FixVector2(Fix64.FromRaw(1), Fix64.Zero)));
+
+        var events = battle.Tick();
+
+        Assert.Empty(events.OfType<CharacterMovedEvent>());
+        Assert.Equal(Point(2, 2), battle.GetCharacter(1)!.Position);
+    }
+
+    [Fact]
     public void Enqueue_DropsLateCommandAndReportsRejection()
     {
         var battle = TestBattleFactory.CreateBattle();

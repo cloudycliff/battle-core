@@ -181,15 +181,17 @@ public sealed partial class BattleInstance
                     projectile.Position));
             }
 
+            if (SweepCollideProjectile(projectile, from, events))
+            {
+                continue;
+            }
+
             if (blockedByTerrain ||
                 !_map.Bounds.ContainsCircle(projectile.Position, projectile.Definition.Radius) ||
                 CurrentFrame >= projectile.ExpiryFrame)
             {
                 DespawnProjectile(projectile, events);
-                continue;
             }
-
-            TryCollideProjectile(projectile, events);
         }
     }
 
@@ -272,6 +274,68 @@ public sealed partial class BattleInstance
                 continue;
             }
 
+            projectile.HitCharacterIds.Add(target.Id);
+            projectile.RemainingHits--;
+            events.Add(new ProjectileHitEvent(
+                CurrentFrame,
+                projectile.Id,
+                target.Id));
+            ApplyHitEffects(source.Id, target, projectile.Definition.HitEffects, events);
+
+            if (projectile.RemainingHits <= 0)
+            {
+                DespawnProjectile(projectile, events);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Continuous collision along this frame's travel segment so fast
+    /// projectiles cannot tunnel through characters. Targets are hit in
+    /// path order (closest-approach parameter, then entityId).
+    /// </summary>
+    private bool SweepCollideProjectile(
+        ProjectileState projectile,
+        FixVector2 from,
+        List<BattleEvent> events)
+    {
+        if (!_characters.TryGetValue(projectile.SourceId, out var source))
+        {
+            DespawnProjectile(projectile, events);
+            return true;
+        }
+
+        var to = projectile.Position;
+        var delta = to - from;
+        var hits = new List<(Fix64 Parameter, CharacterState Target)>();
+        foreach (var target in _characters.Values)
+        {
+            if (target.Id == projectile.SourceId ||
+                projectile.HitCharacterIds.Contains(target.Id) ||
+                !target.IsSelectable ||
+                !IsRelationMatch(source, target, projectile.Definition.Relation))
+            {
+                continue;
+            }
+
+            var combined = projectile.Definition.Radius + target.Template.Radius;
+            if (!SweptGeometry.CircleSweepHitsCircle(from, to, target.Position, combined))
+            {
+                continue;
+            }
+
+            hits.Add((
+                SweptGeometry.ClosestParameter(from, delta, target.Position),
+                target));
+        }
+
+        foreach (var (_, target) in hits
+                     .OrderBy(item => item.Parameter.RawValue)
+                     .ThenBy(item => item.Target.Id))
+        {
             projectile.HitCharacterIds.Add(target.Id);
             projectile.RemainingHits--;
             events.Add(new ProjectileHitEvent(

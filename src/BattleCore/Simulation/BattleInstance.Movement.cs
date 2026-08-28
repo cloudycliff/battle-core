@@ -172,7 +172,9 @@ public sealed partial class BattleInstance
             return false;
         }
 
-        if (blocksMovement && _map.Terrain.Any(blocker => blocker.IntersectsCircle(position, radius)))
+        // Terrain blocks every unit; the blocksMovement flag only opts a unit
+        // out of unit-vs-unit blocking (CONTEXT: Movement Blocking).
+        if (_map.Terrain.Any(blocker => blocker.IntersectsCircle(position, radius)))
         {
             return false;
         }

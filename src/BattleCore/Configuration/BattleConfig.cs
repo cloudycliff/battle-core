@@ -162,6 +162,24 @@ public sealed class BattleConfig
                         $"Character '{template.Id}' resource '{resourceId}' starts above maximum {definition.Maximum}.");
                 }
             }
+
+            foreach (var skillId in template.SkillIds)
+            {
+                if (!SkillDefinitions.TryGetValue(skillId, out var skill))
+                {
+                    continue;
+                }
+
+                foreach (var attributeId in GetSkillSourceAttributeIds(skill)
+                             .Distinct(StringComparer.Ordinal))
+                {
+                    if (!template.BaseAttributes.ContainsKey(attributeId))
+                    {
+                        errors.Add(
+                            $"Character '{template.Id}' is missing attribute '{attributeId}' required by skill '{skillId}'.");
+                    }
+                }
+            }
         }
 
         foreach (var skill in SkillDefinitions.Values)
@@ -358,6 +376,45 @@ public sealed class BattleConfig
             SkillHealEffect heal => heal.AttributeId,
             _ => null,
         };
+
+    /// <summary>
+    /// Attribute ids a caster is read for when executing this skill: direct
+    /// damage/heal bases plus the hit effects of projectiles and areas the
+    /// skill spawns (their bases are evaluated against the caster).
+    /// </summary>
+    private IEnumerable<string> GetSkillSourceAttributeIds(SkillDefinition skill)
+    {
+        foreach (var effect in skill.Effects)
+        {
+            switch (effect)
+            {
+                case SkillDamageEffect or SkillHealEffect
+                    when GetEffectAttributeId(effect) is string attributeId:
+                    yield return attributeId;
+                    break;
+                case SkillSpawnProjectileEffect spawn
+                    when ProjectileDefinitions.TryGetValue(spawn.ProjectileId, out var projectile):
+                    foreach (var attributeId in projectile.HitEffects
+                                 .Select(GetHitAttributeId)
+                                 .Where(id => id is not null))
+                    {
+                        yield return attributeId!;
+                    }
+
+                    break;
+                case SkillSpawnAreaEffectEffect spawn
+                    when AreaEffectDefinitions.TryGetValue(spawn.AreaEffectId, out var area):
+                    foreach (var attributeId in area.HitEffects
+                                 .Select(GetHitAttributeId)
+                                 .Where(id => id is not null))
+                    {
+                        yield return attributeId!;
+                    }
+
+                    break;
+            }
+        }
+    }
 
     private static IEnumerable<string?> GetBuffAttributeIds(BuffEffect effect) =>
         effect switch

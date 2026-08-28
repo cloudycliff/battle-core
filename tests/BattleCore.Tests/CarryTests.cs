@@ -140,6 +140,59 @@ public sealed class CarryTests
         Assert.Equal(Point(5, 2), battle.GetCharacter(2)!.Position);
     }
 
+    [Fact]
+    public void DropAgainstWall_RelocatesOversizedCarriedUnitToValidSpot()
+    {
+        // Review round-2 N4: the drop used to snap the carried unit to the
+        // carrier's position without checking it fits there; a larger-radius
+        // unit could be left permanently embedded in terrain.
+        var values = TestBattleFactory.Bindings.AllIds()
+            .Concat(["attack"])
+            .ToDictionary(id => id, _ => 0L, StringComparer.Ordinal);
+        values[TestBattleFactory.Bindings.MaxHp] = 100;
+        values[TestBattleFactory.Bindings.CritDamage] = 15_000;
+        values[TestBattleFactory.Bindings.MoveSpeed] = 3;
+        var porter = new CharacterTemplate(
+            "porter",
+            Fix64.FromRatio(1, 2),
+            values,
+            skillIds: ["grab", "drop"]);
+        var giant = new CharacterTemplate("giant", Fix64.One, values);
+        var config = new BattleConfig(
+            values.Keys,
+            TestBattleFactory.Bindings,
+            [porter, giant],
+            [Grab(), Drop()]);
+        var wall = new FixAabb(Point(5, 0), Point(6, 5));
+        var battle = TestBattleFactory.CreateBattle(config, terrain: [wall]);
+        battle.Enqueue(new SpawnCharacterCommand(0, "porter", 1, Point(3, 2)));
+        battle.Enqueue(new SpawnCharacterCommand(0, "giant", 1, Point(4, 2)));
+        battle.Tick();
+        battle.Enqueue(new CastSkillCommand(1, 1, "grab", TargetId: 2));
+        battle.Tick();
+        battle.Enqueue(new MoveDirectionCommand(2, 1, Point(1, 0)));
+        for (var frame = 2; frame <= 20; frame++)
+        {
+            battle.Tick();
+        }
+
+        // Carried giant followed into the wall while the porter is pinned
+        // against it; its own radius does not fit at the porter's position.
+        Assert.True(battle.GetCharacter(2)!.Position.X > Fix64.FromInt(4));
+        battle.Enqueue(new CastSkillCommand(21, 1, "drop"));
+        battle.Tick();
+
+        var landing = battle.GetCharacter(2)!.Position;
+        Assert.True(
+            landing.X <= Fix64.FromInt(4),
+            $"giant still embedded in wall at {landing.X}");
+
+        battle.Enqueue(new MoveDirectionCommand(22, 2, Point(-1, 0)));
+        Assert.Contains(
+            battle.Tick().OfType<CharacterMovedEvent>(),
+            moved => moved.CharacterId == 2);
+    }
+
     private static BattleCore.Simulation.BattleInstance CreateBattle(
         params SkillDefinition[] skills) =>
         CreateBattle([], skills);

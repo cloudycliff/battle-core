@@ -305,8 +305,13 @@ public sealed partial class BattleInstance
         long ratio) =>
         CombatMath.ComputeBase(flat, ReadAttribute(source, attributeId), ratio);
 
+    // Missing attributes read as 0 to match CombatSourceSnapshot.ReadAttribute:
+    // a buff or command can legally reference an attribute the live source's
+    // template never declared, and the tick must not throw for it.
     private static long ReadAttribute(CharacterState source, string? attributeId) =>
-        attributeId is null ? 0 : source.Attributes.Get(attributeId);
+        attributeId is not null && source.Attributes.Contains(attributeId)
+            ? source.Attributes.Get(attributeId)
+            : 0;
 
     private void ExpireShields(List<BattleEvent> events)
     {
@@ -427,6 +432,13 @@ public sealed partial class BattleInstance
                 character.ReviveAtFrame is long reviveAt &&
                 CurrentFrame >= reviveAt)
             {
+                // PreventRevive blocks every revive source, including the
+                // Lives countdown; the stand-up waits until the buff ends.
+                if (character.Buffs.Any(buff => buff.PreventsRevive))
+                {
+                    continue;
+                }
+
                 StandUp(character, events);
             }
 

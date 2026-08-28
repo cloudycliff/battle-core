@@ -1,3 +1,4 @@
+using BattleCore.Buffs;
 using BattleCore.Combat;
 using BattleCore.Configuration;
 using BattleCore.Math;
@@ -170,6 +171,43 @@ public sealed class SkillTimelineTests
     }
 
     [Fact]
+    public void SelfStun_CancelsRemainingSameFrameEffectsWithoutDuplicateEnd()
+    {
+        // Review 2026-08-28 #4: a mid-frame stun used to leave the loop's
+        // local cast running (later effects still fired) and the timeline end
+        // emitted a second SkillEndedEvent.
+        var stun = new BuffDefinition(
+            "stun",
+            durationFrames: 5,
+            BuffStackingRule.Refresh,
+            [new ControlBuffEffect(ControlType.Stun)]);
+        var skill = new SkillDefinition(
+            "reckless",
+            durationFrames: 1,
+            cooldownFrames: 0,
+            [
+                new SkillApplyBuffEffect(0, SkillTarget.Self, "stun"),
+                new SkillDamageEffect(
+                    0,
+                    SkillTarget.Self,
+                    DamageType.True,
+                    Flat: 25,
+                    CanCrit: false),
+            ]);
+        var battle = CreateBattle(skill, [stun]);
+        battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
+        battle.Tick();
+        battle.Enqueue(new CastSkillCommand(1, 1, "reckless"));
+
+        var events = battle.Tick();
+
+        Assert.Single(events.OfType<BuffAddedEvent>());
+        Assert.Single(events.OfType<SkillEndedEvent>());
+        Assert.Empty(events.OfType<DamageEvent>());
+        Assert.Equal(100, battle.GetCharacter(1)!.CurrentHp);
+    }
+
+    [Fact]
     public void RingTarget_LeavesInnerHole()
     {
         var ring = new SkillTarget(
@@ -210,7 +248,9 @@ public sealed class SkillTimelineTests
         return battle;
     }
 
-    private static BattleInstance CreateBattle(SkillDefinition skill)
+    private static BattleInstance CreateBattle(
+        SkillDefinition skill,
+        IReadOnlyList<BuffDefinition>? buffs = null)
     {
         var values = BaseAttributes();
         var template = new CharacterTemplate(
@@ -222,7 +262,8 @@ public sealed class SkillTimelineTests
             values.Keys,
             TestBattleFactory.Bindings,
             [template],
-            [skill]);
+            [skill],
+            buffDefinitions: buffs);
         return TestBattleFactory.CreateBattle(config);
     }
 

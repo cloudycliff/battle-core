@@ -328,6 +328,14 @@ public sealed partial class BattleInstance
             var elapsed = checked((int)(CurrentFrame - cast.StartedFrame));
             while (cast.NextEffectIndex < cast.Definition.Effects.Count)
             {
+                // An executed effect can cancel this very timeline (e.g. a
+                // self-stun buff); the remaining same-frame effects must not
+                // run and the end event must not be emitted twice.
+                if (!ReferenceEquals(caster.ActiveSkill, cast))
+                {
+                    break;
+                }
+
                 var effectIndex = cast.NextEffectIndex;
                 var effect = cast.Definition.Effects[effectIndex];
                 if (effect.Frame > elapsed)
@@ -342,7 +350,8 @@ public sealed partial class BattleInstance
                 }
             }
 
-            if (elapsed < cast.Definition.DurationFrames - 1)
+            if (!ReferenceEquals(caster.ActiveSkill, cast) ||
+                elapsed < cast.Definition.DurationFrames - 1)
             {
                 continue;
             }
