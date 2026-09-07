@@ -57,6 +57,13 @@ public sealed class BattleJsonTests
         Assert.Equal(SpatialMode.SideView, bundle.Map.SpatialMode);
         Assert.Equal(SpatialMode.SideView, battle.SpatialMode);
         Assert.Empty(bundle.Map.Terrain);
+        var strike = bundle.Battle.SkillDefinitions["strike"].Effects
+            .OfType<SkillDamageEffect>()
+            .Single()
+            .Target;
+        Assert.Equal(SkillTargetKind.BoxAtCaster, strike.Kind);
+        Assert.Equal(Fix64.FromInt(6), strike.Radius);
+        Assert.Equal(Fix64.FromInt(2), strike.Height);
 
         var marker = Assert.Single(battle.GetPlayerSpawnMarkers());
         Assert.Equal(Fix64.FromRatio(1, 2), marker.Position.Y);

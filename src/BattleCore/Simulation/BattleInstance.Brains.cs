@@ -102,7 +102,7 @@ public sealed partial class BattleInstance
         }
 
         var follow = brain.FollowDistance + owner.Template.Radius;
-        if (FixVector2.DistanceSquared(actor.Position, owner.Position) > follow * follow)
+        if (_space.RangeDistanceSquared(actor.Position, owner.Position) > follow * follow)
         {
             Enqueue(new MoveToCommand(CurrentFrame, actor.Id, owner.Position));
             return;
@@ -119,7 +119,7 @@ public sealed partial class BattleInstance
             return false;
         }
 
-        var distanceSquared = FixVector2.DistanceSquared(actor.Position, actor.SpawnOrigin);
+        var distanceSquared = _space.RangeDistanceSquared(actor.Position, actor.SpawnOrigin);
         var leashSquared = brain.LeashRadius * brain.LeashRadius;
         if (distanceSquared > leashSquared)
         {
@@ -303,7 +303,7 @@ public sealed partial class BattleInstance
                 continue;
             }
 
-            var distanceSquared = FixVector2.DistanceSquared(actor.Position, candidate.Position);
+            var distanceSquared = _space.RangeDistanceSquared(actor.Position, candidate.Position);
             if (distanceSquared > reachSquared)
             {
                 continue;
@@ -375,12 +375,12 @@ public sealed partial class BattleInstance
         return radius > Fix64.Zero ? radius : brain.AttackRange;
     }
 
-    private static bool IsInAttackRange(
+    private bool IsInAttackRange(
         CharacterState actor,
         CharacterState target,
         Fix64 range)
     {
         var reach = range + target.Template.Radius;
-        return FixVector2.DistanceSquared(actor.Position, target.Position) <= reach * reach;
+        return _space.RangeDistanceSquared(actor.Position, target.Position) <= reach * reach;
     }
 }

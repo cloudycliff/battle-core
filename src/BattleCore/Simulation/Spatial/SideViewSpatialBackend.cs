@@ -57,6 +57,19 @@ internal sealed class SideViewSpatialBackend(
 
     public bool UpdatesFacingFromMovement => true;
 
+    public Fix64 RangeDistanceSquared(FixVector2 from, FixVector2 to)
+    {
+        var horizontal = from.X - to.X;
+        return horizontal * horizontal;
+    }
+
+    public FixAabb CreateAttackBox(
+        FixVector2 origin,
+        Facing facing,
+        Fix64 length,
+        Fix64 height) =>
+        FacingAttackBox.Create(origin, ClampFacing(facing), length, height);
+
     private static bool IsFacingLeft(Facing facing) =>
         facing.Step > 256 && facing.Step < 768;
 

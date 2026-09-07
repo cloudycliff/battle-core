@@ -9,6 +9,8 @@
 [ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)。
 横版技能位移：水平当帧推挤，竖直按弹道冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。
 横版朝向只认左右（[ADR 0046](adr/0046-side-view-facing-left-right.md)）。
+横版施法射程与 Brain 的仇恨、攻击、leash、跟随距离只看 X
+（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）。
 推图样例：[samples/sideview.bundle.json](../samples/sideview.bundle.json)（单层地板、空地形、出生点在 `Min.Y + radius`）。
 自动跳台 Brain、单向台等仍未实现。
 不要在宿主里用向下 `MoveDirection` 冒充重力，也不要另开一套伤害/Buff 核。
@@ -39,7 +41,7 @@
 | | Brain：平面 ChaseAttack vs 会走台、跳沟 |
 | | 地形：纯阻挡盒 vs 可站立顶边、以后再谈单向台 |
 
-技能效果应描述「对过滤后的目标造成伤害 / 施加击退」，不要假设 `FixVector2.Y` 的含义。选敌几何（圆/扇/环）可以两边都用；横版以后可以加轴对齐攻击盒，不必第一天替换全部圆。
+技能效果应描述「对过滤后的目标造成伤害 / 施加击退」，不要假设 `FixVector2.Y` 的含义。选敌几何（圆/扇/环）两边都可用；横版近战用 `BoxAtCaster` 轴对齐攻击盒（[ADR 0048](adr/0048-axis-aligned-attack-box.md)）。
 
 ---
 
@@ -94,6 +96,8 @@
 4. **击退 / Dash / Carry 落点走空间后端**，不要在技能文件里写第二套位移。**已完成：俯视仍缩短路径；横版 Forced 为水平推挤 + 弹道竖直冲量。**
 5. **Brain：** 横版先 Idle + 水平 Chase；会跳沟的 Brain 后做。
 6. **Facing：** 横版施法、走动、扇形、冲锋、弹体只消费左右；全圆 1024 档保留，step 0 / 512 表示 ±X。[ADR 0046](adr/0046-side-view-facing-left-right.md) **已完成。**
+7. **Gameplay range：** 横版施法射程、Brain 仇恨/攻击/leash/跟随只看水平距离；命中形状仍为 2D。[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md) **已完成。**
+8. **Attack box：** `BoxAtCaster` 按朝向在身前铺轴对齐矩形，与占用圆相交即入选。[ADR 0048](adr/0048-axis-aligned-attack-box.md) **已完成。**
 
 同场混用两种空间模式不做。需要「侧视演出的俯视砍杀」时，用 `TopDown` + 宿主表现，不要开 `SideView`。
 

@@ -23,6 +23,18 @@ internal interface ISpatialBackend
 
     bool UpdatesFacingFromMovement { get; }
 
+    /// <summary>
+    /// Measures gameplay range for casts and Brains. Occupancy and hit geometry
+    /// retain their own mode-specific checks.
+    /// </summary>
+    Fix64 RangeDistanceSquared(FixVector2 from, FixVector2 to);
+
+    FixAabb CreateAttackBox(
+        FixVector2 origin,
+        Facing facing,
+        Fix64 length,
+        Fix64 height);
+
     void InitializeCharacter(CharacterState character);
 
     FixVector2 GetFrameDelta(

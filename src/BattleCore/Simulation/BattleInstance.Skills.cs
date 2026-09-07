@@ -170,7 +170,7 @@ public sealed partial class BattleInstance
         foreach (var (point, extraRadius) in EnumerateRangeAims(command, skill, caster))
         {
             var reach = skill.Range + extraRadius;
-            if (FixVector2.DistanceSquared(caster.Position, point) > reach * reach)
+            if (_space.RangeDistanceSquared(caster.Position, point) > reach * reach)
             {
                 Reject(command, events, "Target is out of range.");
                 return false;
@@ -749,6 +749,11 @@ public sealed partial class BattleInstance
                 target.InnerRadius,
                 target.Radius,
                 target.CorpsesOnly),
+            SkillTargetKind.BoxAtCaster => ResolveBox(
+                caster,
+                target.Radius,
+                target.Height,
+                target.CorpsesOnly),
             _ => [],
         };
 
@@ -816,6 +821,31 @@ public sealed partial class BattleInstance
             }
 
             if (FixVector2.Dot(offset.NormalizeOrZero(), facing) >= minimumDot)
+            {
+                yield return character;
+            }
+        }
+    }
+
+    private IEnumerable<CharacterState> ResolveBox(
+        CharacterState caster,
+        Fix64 length,
+        Fix64 height,
+        bool corpsesOnly)
+    {
+        var box = _space.CreateAttackBox(
+            caster.Position,
+            caster.Facing,
+            length,
+            height);
+        foreach (var character in _characters.Values)
+        {
+            if (!MatchesTargetFilter(character, corpsesOnly))
+            {
+                continue;
+            }
+
+            if (box.IntersectsCircle(character.Position, character.Template.Radius))
             {
                 yield return character;
             }

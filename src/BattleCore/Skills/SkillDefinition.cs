@@ -85,7 +85,8 @@ public sealed class SkillDefinition
                     SkillTargetKind.CircleAtPoint or
                     SkillTargetKind.CircleAtCaster or
                     SkillTargetKind.FanAtCaster or
-                    SkillTargetKind.RingAtPoint &&
+                    SkillTargetKind.RingAtPoint or
+                    SkillTargetKind.BoxAtCaster &&
                 effect.Target.Radius <= Fix64.Zero)
             {
                 throw new ArgumentException(
@@ -106,6 +107,13 @@ public sealed class SkillDefinition
             {
                 throw new ArgumentException(
                     $"Skill '{Id}' fan minimum dot must be within [-1, 1].");
+            }
+
+            if (effect.Target.Kind == SkillTargetKind.BoxAtCaster &&
+                effect.Target.Height <= Fix64.Zero)
+            {
+                throw new ArgumentException(
+                    $"Skill '{Id}' box target height must be positive.");
             }
 
             if (effect is SkillShieldEffect shield &&

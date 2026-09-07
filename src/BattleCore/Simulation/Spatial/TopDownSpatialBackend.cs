@@ -21,6 +21,16 @@ internal sealed class TopDownSpatialBackend(
 
     public bool UpdatesFacingFromMovement => false;
 
+    public Fix64 RangeDistanceSquared(FixVector2 from, FixVector2 to) =>
+        FixVector2.DistanceSquared(from, to);
+
+    public FixAabb CreateAttackBox(
+        FixVector2 origin,
+        Facing facing,
+        Fix64 length,
+        Fix64 height) =>
+        FacingAttackBox.Create(origin, facing, length, height);
+
     public void InitializeCharacter(CharacterState character)
     {
         character.Grounded = false;

@@ -286,7 +286,7 @@ var battle = bundle.CreateBattle();
 
 时间轴：`durationFrames` 内，效果写在 `Frame`（`0 .. duration-1`）。无引导/按住引导。
 
-选敌：自身、显式目标、当前软锁、点圆、自身圆、自身扇、点环。过滤：敌/友/自身/全部。扇形需要非零 `Direction`；点圆/环需要地图内 `TargetPoint`。普通选敌跳过 Dead 和复活倒计时。`SkillTarget.CorpsesOnly`（如 `ExplicitDeadAlly` / `CurrentDeadAlly`）只选 `CanBeRevived=true` 且当前未被禁止复活的 Dead；可对这类尸体 `SetTarget`，软锁在其可复活期间不会被清掉。复活倒计时中仍不可选。
+选敌：自身、显式目标、当前软锁、点圆、自身圆、自身扇、点环、自身朝向攻击盒（`BoxAtCaster`）。过滤：敌/友/自身/全部。扇形需要非零 `Direction`；点圆/环需要地图内 `TargetPoint`；攻击盒用当前 Facing，不强制方向。`Radius` 是盒沿朝向的长度，`Height` 是垂直于该轴的全高。普通选敌跳过 Dead 和复活倒计时。`SkillTarget.CorpsesOnly`（如 `ExplicitDeadAlly` / `CurrentDeadAlly`）只选 `CanBeRevived=true` 且当前未被禁止复活的 Dead；可对这类尸体 `SetTarget`，软锁在其可复活期间不会被清掉。复活倒计时中仍不可选。
 
 已实现的效果：伤害、治疗、护盾、上 Buff、创建投射物、创建区域、冲锋位移、召唤 Character、StartCarry / Throw / Drop、复活友方尸体（`SkillReviveEffect`）。Buff 可用 `PreventReviveBuffEffect` 禁止复活；该效果随 Buff 跨死亡保留，直到 Buff 到期或被移除。
 
@@ -342,6 +342,8 @@ MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 `CharacterSnapshot.Grounded` 和 `VerticalVelocity` 可驱动落地/腾空表现。
 横版击退与冲锋见 [ADR 0045](adr/0045-side-view-forced-displacement.md)：水平当帧推挤，竖直为弹道冲量。
 横版朝向见 [ADR 0046](adr/0046-side-view-facing-left-right.md)：逻辑上只有左右；走动会改朝向，俯视不会。
+横版施法射程与 Brain 的仇恨、攻击、leash、跟随距离只比较 X；
+圆/环/扇命中、占位和弹体碰撞仍是 2D（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）。
 推图样例 [samples/sideview.bundle.json](../samples/sideview.bundle.json) 用地图 `Bounds.Min.Y` 当地板、空 `terrain`，出生点 Y 为 `Min.Y + radius`。
 基础横版仍使用圆形角色占用与实心 AABB，不含单向台、斜坡和移动平台。
 

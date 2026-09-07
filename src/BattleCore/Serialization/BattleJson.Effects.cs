@@ -131,6 +131,7 @@ public static partial class BattleJson
             parse.OptionalFix64(value, "radius", targetPath, Fix64.Zero),
             parse.OptionalFix64(value, "innerRadius", targetPath, Fix64.Zero),
             parse.OptionalFix64(value, "minimumDot", targetPath, Fix64.Zero),
+            parse.OptionalFix64(value, "height", targetPath, Fix64.Zero),
             parse.OptionalBool(value, "corpsesOnly", targetPath, false));
     }
 

@@ -11,6 +11,7 @@ public enum SkillTargetKind
     CircleAtCaster,
     FanAtCaster,
     RingAtPoint,
+    BoxAtCaster,
 }
 
 public enum TargetRelation
@@ -27,6 +28,7 @@ public sealed record SkillTarget(
     Fix64 Radius,
     Fix64 InnerRadius = default,
     Fix64 MinimumDot = default,
+    Fix64 Height = default,
     bool CorpsesOnly = false)
 {
     public static SkillTarget Self { get; } =

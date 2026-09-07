@@ -43,7 +43,12 @@
           {
             "kind": "damage",
             "frame": 0,
-            "target": { "kind": "CurrentTarget", "relation": "Enemies" },
+            "target": {
+              "kind": "BoxAtCaster",
+              "relation": "Enemies",
+              "radius": 6,
+              "height": 2
+            },
             "damageType": "Physical",
             "flat": 0,
             "attributeId": "attack",

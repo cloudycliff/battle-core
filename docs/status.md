@@ -15,6 +15,8 @@
 > 及显式横版参数（[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)）。
 > Forced 技能位移在横版为水平推挤加弹道竖直冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。
 > 横版朝向只认左右（[ADR 0046](adr/0046-side-view-facing-left-right.md)）。
+> 横版施法射程和 Brain 距离只看 X（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）。
+> 近战可选 `BoxAtCaster` 朝向攻击盒（[ADR 0048](adr/0048-axis-aligned-attack-box.md)）。
 > 样例：`samples/arena.bundle.json`（俯视）、`samples/sideview.bundle.json`（横版推图）。
 
 ---
@@ -26,7 +28,7 @@
 - 移动（方向 / MoveTo / 停止）、软锁、独立朝向 `SetFacing`
 - 数据驱动属性与固定修饰顺序；具名 `ModifierSource` 成组挂卸（Spawn 可注入）
 - 伤害管道、护盾、暴击、防御减免、伤害增减、治疗、Lives、尸体窗口、`CanBeRevived` 永久尸体、`PreventReviveBuffEffect`
-- 技能时间轴：选敌（含尸体复活选敌）、伤/治/盾/Buff/弹/区域/召唤/Carry/复活/冲锋/击退/拉人
+- 技能时间轴：选敌（含尸体复活选敌、朝向攻击盒）、伤/治/盾/Buff/弹/区域/召唤/Carry/复活/冲锋/击退/拉人
 - 直线穿透弹（默认撞地形）、地面或跟随区域
 - Buff：属性、周期伤/治/资源、控制、Tag 免疫/替换/驱散、伤害免疫、不可选中、战斗触发；时长 0 = 永久；周期伤害快照来源
 - Brain：Idle / ChaseAttack / HoldPosition / FollowOwner（Chase/Hold 可 leash）
@@ -45,7 +47,7 @@
 
 ## 已设计、尚未编码
 
-- **横版后续能力**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)、[ADR 0045](adr/0045-side-view-forced-displacement.md)、[ADR 0046](adr/0046-side-view-facing-left-right.md)、[space-modes.md](space-modes.md)）：基础后端、Forced 位移与左右朝向已编码；自动跳台 Brain、单向台、斜坡和移动平台尚未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
+- **横版后续能力**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)、[ADR 0045](adr/0045-side-view-forced-displacement.md)、[ADR 0046](adr/0046-side-view-facing-left-right.md)、[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)、[ADR 0048](adr/0048-axis-aligned-attack-box.md)、[space-modes.md](space-modes.md)）：基础后端、Forced 位移、左右朝向、水平 gameplay range 与朝向攻击盒已编码；自动跳台 Brain、单向台、斜坡和移动平台尚未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
 
 被动技能：核内就是永久 Buff + 触发或 ModifierSource；玩家侧由宿主包装。
 
@@ -89,6 +91,8 @@
 - **共用推演核、分叉空间后端**（[ADR 0043](adr/0043-shared-kernel-split-space.md)）：俯视与横版共用伤害/Buff/时间轴；移动与碰撞按模式各写一套。工作说明 [space-modes.md](space-modes.md)。
 - **横版 Forced 位移**（[ADR 0045](adr/0045-side-view-forced-displacement.md)）：冲锋/击退/拉人/投掷在 SideView 为水平推挤加弹道竖直冲量；俯视仍缩短路径。
 - **横版朝向左右**（[ADR 0046](adr/0046-side-view-facing-left-right.md)）：瞄准/扇形/冲锋/弹体/`SetFacing` 夹成 ±X；击退向量不夹，向上施法仍能打飞。
+- **横版 gameplay range 看 X**（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）：施法射程和 Brain 仇恨/攻击/leash/跟随忽略 Y；命中与碰撞形状不变。
+- **朝向攻击盒**（[ADR 0048](adr/0048-axis-aligned-attack-box.md)）：`BoxAtCaster` 沿 Facing 铺 AABB，与占用圆相交即入选；不要求施法方向。
 
 ---
 
