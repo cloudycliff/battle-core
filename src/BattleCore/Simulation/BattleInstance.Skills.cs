@@ -3,6 +3,7 @@ using BattleCore.Combat;
 using BattleCore.Math;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
+using BattleCore.Simulation.Spatial;
 using BattleCore.Skills;
 
 namespace BattleCore.Simulation;
@@ -565,7 +566,10 @@ public sealed partial class BattleInstance
         }
 
         var from = caster.Position;
-        var destination = _space.ResolveMovement(caster, desiredDelta).Destination;
+        var destination = _space.ResolveMovement(
+            caster,
+            desiredDelta,
+            SpatialDisplacementKind.Forced).Destination;
         if (destination == from)
         {
             return;
@@ -634,7 +638,10 @@ public sealed partial class BattleInstance
         }
 
         var from = character.Position;
-        var destination = _space.ResolveMovement(character, desiredDelta).Destination;
+        var destination = _space.ResolveMovement(
+            character,
+            desiredDelta,
+            SpatialDisplacementKind.Forced).Destination;
         if (destination == from)
         {
             return;

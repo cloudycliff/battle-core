@@ -12,7 +12,8 @@
 > 空间后端基础已落地：`TopDownSpatialBackend` 保持原俯视规则；
 > `SideViewSpatialBackend` 支持重力、接地、水平移动、平台顶边/天花板阻挡
 > 和 `JumpCommand`。`MapConfig` / JSON 支持 `spatialMode`（默认 `TopDown`）
-> 及显式横版参数。规则见 [ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)。
+> 及显式横版参数（[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)）。
+> Forced 技能位移在横版为水平推挤加弹道竖直冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。
 
 ---
 
@@ -42,7 +43,7 @@
 
 ## 已设计、尚未编码
 
-- **横版后续能力**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)、[space-modes.md](space-modes.md)）：基础后端已编码；垂直击退速度冲量、自动跳台 Brain、单向台、斜坡和移动平台尚未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
+- **横版后续能力**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)、[ADR 0045](adr/0045-side-view-forced-displacement.md)、[space-modes.md](space-modes.md)）：基础后端与 Forced 位移已编码；自动跳台 Brain、单向台、斜坡和移动平台尚未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
 
 被动技能：核内就是永久 Buff + 触发或 ModifierSource；玩家侧由宿主包装。
 
@@ -82,7 +83,9 @@
 - **Carry 随载体技能位移同帧跟随**（[ADR 0004](adr/0004-carry-relation.md)、[ADR 0037](adr/0037-skill-knockback-pull.md)）：保持偏移，结束 Carry 时校正落点。
 - **死亡状态清理**（[ADR 0012](adr/0012-lives-and-skill-revive.md)）：清普通 Buff、护盾、技能/移动/软锁/Carry；保留 PreventRevive、CD、ModifierSource。
 - **指向技能起手转向**（[ADR 0040](adr/0040-cast-facing-updates-on-accept.md)）：Cast 校验成功即更新 Facing，之后取消不回滚。
-- **共用推演核、分叉空间后端**（[ADR 0043](adr/0043-shared-kernel-split-space.md)）：俯视与横版共用伤害/Buff/时间轴；移动与碰撞按模式各写一套。V1 只实现 `TopDown`。工作说明 [space-modes.md](space-modes.md)。
+- **Buff 战斗触发**（[ADR 0029](adr/0029-buff-combat-triggers.md)）：造成/受到伤害、击杀、起手施法；一层；动作不含再造成伤害。获得/失去 Buff 触发 V1 不做。
+- **共用推演核、分叉空间后端**（[ADR 0043](adr/0043-shared-kernel-split-space.md)）：俯视与横版共用伤害/Buff/时间轴；移动与碰撞按模式各写一套。工作说明 [space-modes.md](space-modes.md)。
+- **横版 Forced 位移**（[ADR 0045](adr/0045-side-view-forced-displacement.md)）：冲锋/击退/拉人/投掷在 SideView 为水平推挤加弹道竖直冲量；俯视仍缩短路径。
 
 ---
 

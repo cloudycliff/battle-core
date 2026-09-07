@@ -71,7 +71,51 @@ internal sealed class SideViewSpatialBackend(
 
     public SpatialMoveResult ResolveMovement(
         CharacterState character,
-        FixVector2 desiredDelta)
+        FixVector2 desiredDelta,
+        SpatialDisplacementKind kind)
+    {
+        var slide = desiredDelta;
+        if (kind == SpatialDisplacementKind.Forced)
+        {
+            ApplyVerticalImpulse(character, desiredDelta.Y);
+            slide = new FixVector2(
+                desiredDelta.X,
+                character.VerticalVelocity /
+                Fix64.FromInt(BattleInstance.LogicFramesPerSecond));
+        }
+
+        return Slide(character, slide);
+    }
+
+    private void ApplyVerticalImpulse(CharacterState character, Fix64 heightDelta)
+    {
+        if (heightDelta == Fix64.Zero)
+        {
+            return;
+        }
+
+        if (heightDelta < Fix64.Zero && character.Grounded)
+        {
+            return;
+        }
+
+        var launchSpeed = Fix64.Sqrt(
+            Fix64.FromInt(2) * _settings.Gravity * Fix64.Abs(heightDelta));
+        if (heightDelta > Fix64.Zero)
+        {
+            character.Grounded = false;
+            character.VerticalVelocity += launchSpeed;
+            return;
+        }
+
+        character.VerticalVelocity -= launchSpeed;
+        if (character.VerticalVelocity < -_settings.MaximumFallSpeed)
+        {
+            character.VerticalVelocity = -_settings.MaximumFallSpeed;
+        }
+    }
+
+    private SpatialMoveResult Slide(CharacterState character, FixVector2 desiredDelta)
     {
         var start = character.Position;
         var horizontalDelta = new FixVector2(desiredDelta.X, Fix64.Zero);
@@ -94,7 +138,7 @@ internal sealed class SideViewSpatialBackend(
             character.VerticalVelocity = Fix64.Zero;
         }
 
-        character.Grounded = desiredDelta.Y <= Fix64.Zero &&
+        character.Grounded = character.VerticalVelocity <= Fix64.Zero &&
                              IsSupported(destination, character.Template.Radius);
 
         return new SpatialMoveResult(

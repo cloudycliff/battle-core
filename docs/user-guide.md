@@ -291,7 +291,7 @@ var battle = bundle.CreateBattle();
 
 `SkillDashEffect(Frame, Distance)` 使用施法 `Direction` 冲固定距离，朝 `TargetPoint` 冲但不越过该点，或朝 `TargetId` 在效果帧的位置冲固定距离。冲锋复用普通移动的地图、地形和敌对占位阻挡，遇阻缩短，不滑墙、不穿过中途障碍。Root 会阻止施放/生效，被 Carry 的单位不能自行冲锋；载体冲锋时被携带者同步跟随。位移产生 `CharacterMovedEvent`，效果生效产生以施法者为目标的 `SkillHitEvent`。
 
-`SkillKnockbackEffect` 把选中目标推离施法者（或 `AlongCastDirection` 时沿施法方向）；`SkillPullEffect` 拉向施法者，在双方半径相切处停下，不穿进施法者占位圆。二者都走 `FindMovementFraction`。Root 或被携带者不移动；若被推的是载体，被携带者同帧保持 `CarryOffset` 跟随。
+`SkillKnockbackEffect` 把选中目标推离施法者（或 `AlongCastDirection` 时沿施法方向）；`SkillPullEffect` 拉向施法者，在双方半径相切处停下，不穿进施法者占位圆。俯视二者都缩短路径。横版把位移向量拆成当帧水平推挤，竖直分量按 `sqrt(2 * gravity * |Y|)` 变成弹道速度，落地前保持浮空。Root 或被携带者不移动；若被推的是载体，被携带者同帧保持 `CarryOffset` 跟随。
 
 技能可设 `Range`：`> 0` 时 `CastSkill` 校验指向点或显式/当前目标（目标型加目标半径）。未配或 ≤0 不限制。自身、施法者中心范围、只有方向没有点的冲锋/弹体不检水平距离。超距拒绝不扣资源、不进 CD。
 
@@ -339,6 +339,7 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 被忽略，重力由核自动推进。落地角色用 `JumpCommand` 起跳。查询
 `CharacterSnapshot.Grounded` 和 `VerticalVelocity` 可驱动落地/腾空表现。
+横版击退与冲锋见 [ADR 0045](adr/0045-side-view-forced-displacement.md)：水平当帧推挤，竖直为弹道冲量。
 基础横版仍使用圆形角色占用与实心 AABB，不含单向台、斜坡和移动平台。
 
 `SpawnPoint.TableEntryId` 指向 `SpawnTableEntry`。条目的 `Frame` 从战斗开始算（第 0 帧是第一次 `Tick`）。同一点 `Count > 1` 会在同一位置刷多只（同阵营可重叠）。

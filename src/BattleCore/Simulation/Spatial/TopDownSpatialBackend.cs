@@ -43,7 +43,8 @@ internal sealed class TopDownSpatialBackend(
 
     public SpatialMoveResult ResolveMovement(
         CharacterState character,
-        FixVector2 desiredDelta)
+        FixVector2 desiredDelta,
+        SpatialDisplacementKind kind)
     {
         var fraction = FindMovementFraction(character, desiredDelta);
         return new SpatialMoveResult(

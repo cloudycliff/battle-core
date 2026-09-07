@@ -15,6 +15,14 @@ public sealed class Fix64Tests
     }
 
     [Fact]
+    public void Sqrt_MatchesPerfectSquares()
+    {
+        Assert.Equal(Fix64.Zero, Fix64.Sqrt(Fix64.Zero));
+        Assert.Equal(Fix64.FromInt(2), Fix64.Sqrt(Fix64.FromInt(4)));
+        Assert.Equal(Fix64.FromInt(3), Fix64.Sqrt(Fix64.FromInt(9)));
+    }
+
+    [Fact]
     public void NormalizeOrZero_ProducesUnitLength()
     {
         var vector = new FixVector2(Fix64.FromInt(3), Fix64.FromInt(4));

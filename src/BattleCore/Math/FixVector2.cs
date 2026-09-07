@@ -13,8 +13,7 @@ public readonly record struct FixVector2(Fix64 X, Fix64 Y)
             return Zero;
         }
 
-        var length = Fix64.FromRaw(IntegerSquareRoot(
-            checked((ulong)LengthSquared.RawValue << Fix64.FractionalBits)));
+        var length = Fix64.Sqrt(LengthSquared);
 
         // Sub-resolution vectors (length below 1/65536 m) square to zero in
         // Q16.16; treat them as no direction instead of dividing by zero.
@@ -40,32 +39,4 @@ public readonly record struct FixVector2(Fix64 X, Fix64 Y)
 
     public static FixVector2 operator *(FixVector2 value, Fix64 scalar) =>
         new(value.X * scalar, value.Y * scalar);
-
-    private static long IntegerSquareRoot(ulong value)
-    {
-        ulong result = 0;
-        ulong bit = 1UL << 62;
-
-        while (bit > value)
-        {
-            bit >>= 2;
-        }
-
-        while (bit != 0)
-        {
-            if (value >= result + bit)
-            {
-                value -= result + bit;
-                result = (result >> 1) + bit;
-            }
-            else
-            {
-                result >>= 1;
-            }
-
-            bit >>= 2;
-        }
-
-        return checked((long)result);
-    }
 }

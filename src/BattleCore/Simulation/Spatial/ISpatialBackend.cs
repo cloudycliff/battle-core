@@ -22,7 +22,8 @@ internal interface ISpatialBackend
 
     SpatialMoveResult ResolveMovement(
         CharacterState character,
-        FixVector2 desiredDelta);
+        FixVector2 desiredDelta,
+        SpatialDisplacementKind kind);
 
     bool HasReachedDestination(
         CharacterState character,
@@ -43,6 +44,12 @@ internal interface ISpatialBackend
         int factionId,
         bool blocksMovement,
         long excludedCharacterId = 0);
+}
+
+internal enum SpatialDisplacementKind
+{
+    Locomotion,
+    Forced,
 }
 
 internal readonly record struct SpatialMoveResult(

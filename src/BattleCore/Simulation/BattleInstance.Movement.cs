@@ -1,6 +1,7 @@
 using BattleCore.Combat;
 using BattleCore.Math;
 using BattleCore.Simulation.Events;
+using BattleCore.Simulation.Spatial;
 
 namespace BattleCore.Simulation;
 
@@ -35,7 +36,10 @@ public sealed partial class BattleInstance
             }
 
             var from = character.Position;
-            var movement = _space.ResolveMovement(character, desiredDelta);
+            var movement = _space.ResolveMovement(
+                character,
+                desiredDelta,
+                SpatialDisplacementKind.Locomotion);
             var destination = movement.Destination;
             if (destination == from)
             {

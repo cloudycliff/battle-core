@@ -34,6 +34,49 @@ public readonly struct Fix64 :
     public static Fix64 Abs(Fix64 value) =>
         value.RawValue >= 0 ? value : new(checked(-value.RawValue));
 
+    public static Fix64 Sqrt(Fix64 value)
+    {
+        if (value.RawValue < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), "Cannot take the square root of a negative value.");
+        }
+
+        if (value.RawValue == 0)
+        {
+            return Zero;
+        }
+
+        return FromRaw(IntegerSquareRoot(checked((ulong)value.RawValue << FractionalBits)));
+    }
+
+    private static long IntegerSquareRoot(ulong value)
+    {
+        ulong result = 0;
+        ulong bit = 1UL << 62;
+
+        while (bit > value)
+        {
+            bit >>= 2;
+        }
+
+        while (bit != 0)
+        {
+            if (value >= result + bit)
+            {
+                value -= result + bit;
+                result = (result >> 1) + bit;
+            }
+            else
+            {
+                result >>= 1;
+            }
+
+            bit >>= 2;
+        }
+
+        return checked((long)result);
+    }
+
     public static Fix64 Min(Fix64 left, Fix64 right) =>
         left <= right ? left : right;
 

@@ -1,5 +1,6 @@
 using BattleCore.Math;
 using BattleCore.Simulation.Events;
+using BattleCore.Simulation.Spatial;
 using BattleCore.Skills;
 
 namespace BattleCore.Simulation;
@@ -60,7 +61,10 @@ public sealed partial class BattleInstance
         if (direction != FixVector2.Zero)
         {
             var desiredDelta = direction * effect.Distance;
-            var destination = _space.ResolveMovement(carried, desiredDelta).Destination;
+            var destination = _space.ResolveMovement(
+                carried,
+                desiredDelta,
+                SpatialDisplacementKind.Forced).Destination;
             if (destination != from)
             {
                 carried.Position = destination;
