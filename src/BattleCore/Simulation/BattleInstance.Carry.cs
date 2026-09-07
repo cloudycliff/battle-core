@@ -60,8 +60,7 @@ public sealed partial class BattleInstance
         if (direction != FixVector2.Zero)
         {
             var desiredDelta = direction * effect.Distance;
-            var fraction = FindMovementFraction(carried, desiredDelta);
-            var destination = from + (desiredDelta * fraction);
+            var destination = _space.ResolveMovement(carried, desiredDelta).Destination;
             if (destination != from)
             {
                 carried.Position = destination;

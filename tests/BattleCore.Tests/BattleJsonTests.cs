@@ -38,12 +38,36 @@ public sealed class BattleJsonTests
     {
         var bundle = BattleJson.LoadBundle(File.ReadAllText(SamplePath("arena.bundle.json")));
         var hero = bundle.Battle.CharacterTemplates["hero"];
+        Assert.Equal(SpatialMode.TopDown, bundle.Map.SpatialMode);
         Assert.Equal(Fix64.FromRatio(1, 2), hero.Radius);
         Assert.Equal("strike", Assert.Single(hero.SkillIds));
         Assert.Equal(
             SkillTargetKind.CurrentTarget,
             bundle.Battle.SkillDefinitions["strike"].Effects.OfType<SkillDamageEffect>().Single().Target.Kind);
         Assert.Equal(8, bundle.Battle.SkillDefinitions["strike"].Range.ToInt64());
+    }
+
+    [Fact]
+    public void LoadBundle_ReadsSideViewModeAndCreatesBattle()
+    {
+        var json = File.ReadAllText(SamplePath("arena.bundle.json"))
+            .Replace(
+                "\"map\": {",
+                """
+                "map": {
+                  "spatialMode": "SideView",
+                  "sideView": {
+                    "gravity": 30,
+                    "maximumFallSpeed": 20,
+                    "jumpSpeed": 10
+                  },
+                """,
+                StringComparison.Ordinal);
+
+        var bundle = BattleJson.LoadBundle(json);
+
+        Assert.Equal(SpatialMode.SideView, bundle.Map.SpatialMode);
+        Assert.Equal(SpatialMode.SideView, bundle.CreateBattle().SpatialMode);
     }
 
     [Fact]

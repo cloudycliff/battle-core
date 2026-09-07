@@ -415,6 +415,27 @@ public static partial class BattleJson
             "playerSpawnMarkers",
             path,
             (element, itemPath) => ReadPlayerMarker(element, itemPath, parse));
+        var spatialMode = parse.OptionalEnum(
+            root,
+            "spatialMode",
+            path,
+            SpatialMode.TopDown);
+        SideViewSettings? sideView = null;
+        if (parse.TryGet(root, "sideView", out var sideViewElement))
+        {
+            var sideViewPath = $"{path}.sideView";
+            if (sideViewElement.ValueKind != JsonValueKind.Object)
+            {
+                parse.Fail($"{sideViewPath} must be an object.");
+            }
+            else
+            {
+                sideView = new SideViewSettings(
+                    parse.RequireFix64(sideViewElement, "gravity", sideViewPath),
+                    parse.RequireFix64(sideViewElement, "maximumFallSpeed", sideViewPath),
+                    parse.RequireFix64(sideViewElement, "jumpSpeed", sideViewPath));
+            }
+        }
 
         if (parse.HasErrors)
         {
@@ -427,7 +448,9 @@ public static partial class BattleJson
                 bounds,
                 terrain,
                 spawnPoints.OfType<SpawnPoint>(),
-                playerMarkers.OfType<PlayerSpawnMarker>());
+                playerMarkers.OfType<PlayerSpawnMarker>(),
+                spatialMode,
+                sideView);
         }
         catch (ConfigurationException exception)
         {

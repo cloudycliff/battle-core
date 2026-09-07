@@ -30,4 +30,6 @@ public sealed record CharacterSnapshot(
     long? CarryingId,
     long? CarriedById,
     IReadOnlyList<string> ModifierSourceIds,
-    IReadOnlyDictionary<string, long> Resources);
+    IReadOnlyDictionary<string, long> Resources,
+    bool Grounded = false,
+    Fix64 VerticalVelocity = default);

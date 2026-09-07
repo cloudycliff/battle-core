@@ -25,6 +25,8 @@ internal sealed class CharacterState
     public long? CarryingId { get; set; }
     public long? CarriedById { get; set; }
     public FixVector2 CarryOffset { get; set; }
+    public Fix64 VerticalVelocity { get; set; }
+    public bool Grounded { get; set; }
 
     public Facing Facing { get; set; } = new(0);
     public FixVector2 SpawnOrigin { get; set; }
@@ -116,7 +118,9 @@ internal sealed class CharacterState
             CarryingId,
             CarriedById,
             ModifierSources.Keys.ToArray(),
-            new Dictionary<string, long>(Resources, StringComparer.Ordinal));
+            new Dictionary<string, long>(Resources, StringComparer.Ordinal),
+            Grounded,
+            VerticalVelocity);
 }
 
 internal enum MovementKind
@@ -133,7 +137,7 @@ internal readonly record struct MovementIntent(
     public static readonly MovementIntent None = new(MovementKind.None, FixVector2.Zero);
 
     public static MovementIntent Direction(FixVector2 value) =>
-        new(MovementKind.Direction, value.NormalizeOrZero());
+        new(MovementKind.Direction, value);
 
     public static MovementIntent Destination(FixVector2 value) =>
         new(MovementKind.Destination, value);

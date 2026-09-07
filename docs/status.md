@@ -9,6 +9,10 @@
 > **2026-08-28 审查与修复**：两轮全面审查见 [review-2026-08-28.md](review-2026-08-28.md) 与 [review-2026-08-28-round2.md](review-2026-08-28-round2.md)。第一批 8 项已修（弹体扫掠、NormalizeOrZero 除零、属性缺失防崩、眩晕取消时间轴、PreventRevive 挡 Lives、非阻挡单位撞地形、Carry 落点复验、确定性黄金回归测试），其余问题按 round2 文档「合并修复顺序」排队。
 >
 > **2026-09-07**：横版不另写战斗核。共用推演核、分叉空间后端已拍板（[ADR 0043](adr/0043-shared-kernel-split-space.md)），工作说明 [space-modes.md](space-modes.md)。V1 仍只编码俯视。
+> 空间后端基础已落地：`TopDownSpatialBackend` 保持原俯视规则；
+> `SideViewSpatialBackend` 支持重力、接地、水平移动、平台顶边/天花板阻挡
+> 和 `JumpCommand`。`MapConfig` / JSON 支持 `spatialMode`（默认 `TopDown`）
+> 及显式横版参数。规则见 [ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)。
 
 ---
 
@@ -38,7 +42,7 @@
 
 ## 已设计、尚未编码
 
-- **空间后端分叉 / 横版 `SideView`**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[space-modes.md](space-modes.md)）：同一套 Tick/管道/Buff/技能时间轴；抽出空间服务后接重力、接地、平台顶边。未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
+- **横版后续能力**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)、[space-modes.md](space-modes.md)）：基础后端已编码；垂直击退速度冲量、自动跳台 Brain、单向台、斜坡和移动平台尚未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
 
 被动技能：核内就是永久 Buff + 触发或 ModifierSource；玩家侧由宿主包装。
 

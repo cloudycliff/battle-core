@@ -565,8 +565,7 @@ public sealed partial class BattleInstance
         }
 
         var from = caster.Position;
-        var fraction = FindMovementFraction(caster, desiredDelta);
-        var destination = from + (desiredDelta * fraction);
+        var destination = _space.ResolveMovement(caster, desiredDelta).Destination;
         if (destination == from)
         {
             return;
@@ -635,8 +634,7 @@ public sealed partial class BattleInstance
         }
 
         var from = character.Position;
-        var fraction = FindMovementFraction(character, desiredDelta);
-        var destination = from + (desiredDelta * fraction);
+        var destination = _space.ResolveMovement(character, desiredDelta).Destination;
         if (destination == from)
         {
             return;

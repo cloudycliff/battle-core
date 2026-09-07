@@ -13,7 +13,7 @@
 Battle Core 是 **.NET 8、无引擎依赖** 的 2D 实时战斗**逻辑核**。它推演移动、技能、伤害、Buff、弹道、区域、AI 和刷怪，不负责渲染、动画、音效、网络传输、背包经济。
 
 - 每次 `Tick()` 恰好前进 **1 逻辑帧**，固定 **30 Hz**（1 帧 = 1/30 秒）。
-- 空间用 `Fix64`（Q16.16），**1 单位 = 1 米**。不要用 IEEE 浮点做逻辑判定。V1 是俯视平面（X、Y 都是地面轴），没有重力与跳跃。横版计划见 [space-modes.md](space-modes.md)，不要用向下 `MoveDirection` 冒充下落。
+- 空间用 `Fix64`（Q16.16），**1 单位 = 1 米**。不要用 IEEE 浮点做逻辑判定。默认 `TopDown` 中 X、Y 都是地面轴；`SideView` 中 X 为水平、Y 向上，重力和跳跃由核推进。见 [space-modes.md](space-modes.md)，不要用向下 `MoveDirection` 冒充下落。
 - 生命、伤害、冷却、万分比等战斗数值是**整数**（`10000` = 100%）。
 - 相同配置 + 相同 seed + 相同命令序列，结果应一致。V1 **不提供**帧哈希、回放器。
 - 胜负由宿主根据事件/查询自己裁定。核会发阵营清空、超时等事实，**不会**自动销毁实例。
@@ -224,7 +224,7 @@ Brain 看到的是「本帧外部命令已经落地、本帧移动还没发生�
 | 对象 | 职责 |
 |------|------|
 | `BattleConfig` | 属性声明、战斗绑定、角色模板、技能、Buff、弹体、区域、Brain、防御 K / 最大减免 / 保底伤害、默认尸体时长与复活延迟 |
-| `MapConfig` | 矩形边界、地形 AABB、刷怪点、玩家出生标记 |
+| `MapConfig` | 矩形边界、地形 AABB、刷怪点、玩家出生标记、空间模式及横版重力参数 |
 | `SpawnTable` | 刷谁、哪一帧、几只、可选覆盖 Brain；由地图上的点引用 |
 
 创建：
@@ -333,6 +333,13 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 ### 5.6 地图与刷怪
 
 单位不能走出 `MapConfig` 边界；弹体出界或默认撞地形后销毁。地形是静态 AABB。
+
+`MapConfig` 缺省为 `SpatialMode.TopDown`。横版地图使用
+`SpatialMode.SideView`，并提供正数 `SideViewSettings(Gravity,
+MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
+被忽略，重力由核自动推进。落地角色用 `JumpCommand` 起跳。查询
+`CharacterSnapshot.Grounded` 和 `VerticalVelocity` 可驱动落地/腾空表现。
+基础横版仍使用圆形角色占用与实心 AABB，不含单向台、斜坡和移动平台。
 
 `SpawnPoint.TableEntryId` 指向 `SpawnTableEntry`。条目的 `Frame` 从战斗开始算（第 0 帧是第一次 `Tick`）。同一点 `Count > 1` 会在同一位置刷多只（同阵营可重叠）。
 

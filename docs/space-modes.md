@@ -2,7 +2,14 @@
 
 给后续实现横版（侧视平台动作）用的工作说明。拍板见 [ADR 0043](adr/0043-shared-kernel-split-space.md)。术语以 [CONTEXT.md](../CONTEXT.md) 为准。
 
-**现状：** V1 只实现俯视平面（`TopDown`）。横版未编码。未抽空间接口前，不要在宿主里用向下 `MoveDirection` 冒充重力，也不要另开一套伤害/Buff 核。
+**现状（2026-09-07）：** V1 俯视逻辑已迁入
+`TopDownSpatialBackend`；`MapConfig` / JSON 已有 `spatialMode`，缺省为
+`TopDown`。`SideViewSpatialBackend` 已实现基础重力、接地、水平移动、
+平台顶边/天花板阻挡和 `JumpCommand`；重力参数、接地和跳跃语义见
+[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)。
+横版技能位移目前复用轴分离碰撞，但“垂直击退作为速度冲量”、自动跳台
+Brain、单向台等仍未实现。
+不要在宿主里用向下 `MoveDirection` 冒充重力，也不要另开一套伤害/Buff 核。
 
 ---
 
@@ -81,7 +88,7 @@
 
 1. **抽空间接口，只接上现有俯视实现。** 无行为变化，全量测试绿。
 2. **配置增加 `spatialMode`（名可再定），默认 `TopDown`。** 缺省行为与今天完全一致。
-3. **实现 `SideViewSpace`：** 重力、接地、水平移动、跳；地形顶边可站。单测用窄平台与墙，锁落地与「不会穿顶」。
+3. **实现 `SideViewSpace`：** 重力、接地、水平移动、跳；地形顶边可站。单测用窄平台与墙，锁落地与「不会穿顶」。**已完成基础版。**
 4. **击退 / Dash / Carry 落点走空间后端**，不要在技能文件里写第二套位移。
 5. **Brain：** 横版先 Idle + 水平 Chase；会跳沟的 Brain 后做。
 6. **Facing：** 横版施法仍更新朝向，但移动只消费左右；全圆档可保留以免改事件协议。

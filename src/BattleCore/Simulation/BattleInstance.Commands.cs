@@ -37,7 +37,8 @@ public sealed partial class BattleInstance
                 break;
             case MoveDirectionCommand move:
                 WithLiving(move.CharacterId, command, events, character =>
-                    character.Movement = MovementIntent.Direction(move.Direction));
+                    character.Movement = MovementIntent.Direction(
+                        _space.NormalizeMoveDirection(move.Direction)));
                 break;
             case MoveToCommand moveTo:
                 WithLiving(moveTo.CharacterId, command, events, character =>
@@ -46,6 +47,20 @@ public sealed partial class BattleInstance
             case StopMovingCommand stop:
                 WithLiving(stop.CharacterId, command, events, character =>
                     character.Movement = MovementIntent.None);
+                break;
+            case JumpCommand jump:
+                WithLiving(jump.CharacterId, command, events, character =>
+                {
+                    var movementLocked = !character.CanMove ||
+                        character.ActiveSkill is
+                        {
+                            Definition: { CanMoveWhileCasting: false },
+                        };
+                    if (movementLocked || !_space.TryJump(character))
+                    {
+                        Reject(command, events, "Jump requires a grounded, movable SideView character.");
+                    }
+                });
                 break;
             case SetFacingCommand facing:
                 WithLiving(facing.CharacterId, command, events, character =>
@@ -175,6 +190,7 @@ public sealed partial class BattleInstance
             OwnerId = command.OwnerId,
             SpawnOrigin = command.Position,
         };
+        _space.InitializeCharacter(character);
         foreach (var resource in _config.ResourceDefinitions.Values)
         {
             character.Resources[resource.Id] =
@@ -277,6 +293,7 @@ public sealed partial class BattleInstance
             MoveDirectionCommand value => value.CharacterId,
             MoveToCommand value => value.CharacterId,
             StopMovingCommand value => value.CharacterId,
+            JumpCommand value => value.CharacterId,
             SetFacingCommand value => value.CharacterId,
             SetTargetCommand value => value.CharacterId,
             CastSkillCommand value => value.CasterId,

@@ -2,18 +2,33 @@ using BattleCore.Math;
 
 namespace BattleCore.Configuration;
 
+public enum SpatialMode
+{
+    TopDown,
+    SideView,
+}
+
+public sealed record SideViewSettings(
+    Fix64 Gravity,
+    Fix64 MaximumFallSpeed,
+    Fix64 JumpSpeed);
+
 public sealed class MapConfig
 {
     public MapConfig(
         FixAabb bounds,
         IEnumerable<FixAabb>? terrain = null,
         IEnumerable<SpawnPoint>? spawnPoints = null,
-        IEnumerable<PlayerSpawnMarker>? playerSpawnMarkers = null)
+        IEnumerable<PlayerSpawnMarker>? playerSpawnMarkers = null,
+        SpatialMode spatialMode = SpatialMode.TopDown,
+        SideViewSettings? sideView = null)
     {
         Bounds = bounds;
         Terrain = terrain?.ToArray() ?? [];
         SpawnPoints = (spawnPoints ?? []).ToArray();
         PlayerSpawnMarkers = (playerSpawnMarkers ?? []).ToArray();
+        SpatialMode = spatialMode;
+        SideView = sideView;
 
         var errors = new List<string>();
 
@@ -33,6 +48,18 @@ public sealed class MapConfig
             PlayerSpawnMarkers.Select(marker => (marker.Id, marker.Position)),
             errors);
 
+        if (SpatialMode == SpatialMode.SideView && SideView is null)
+        {
+            errors.Add("SideView spatial mode requires side-view settings.");
+        }
+        else if (SideView is not null &&
+                 (SideView.Gravity <= Fix64.Zero ||
+                  SideView.MaximumFallSpeed <= Fix64.Zero ||
+                  SideView.JumpSpeed <= Fix64.Zero))
+        {
+            errors.Add("Side-view gravity, maximum fall speed, and jump speed must be positive.");
+        }
+
         if (errors.Count > 0)
         {
             throw new ConfigurationException(errors);
@@ -43,6 +70,8 @@ public sealed class MapConfig
     public IReadOnlyList<FixAabb> Terrain { get; }
     public IReadOnlyList<SpawnPoint> SpawnPoints { get; }
     public IReadOnlyList<PlayerSpawnMarker> PlayerSpawnMarkers { get; }
+    public SpatialMode SpatialMode { get; }
+    public SideViewSettings? SideView { get; }
 
     private void ValidateMarkers(
         string kind,

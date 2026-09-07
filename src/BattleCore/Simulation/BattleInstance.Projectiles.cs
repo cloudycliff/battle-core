@@ -166,7 +166,10 @@ public sealed partial class BattleInstance
             var blockedByTerrain = false;
             if (projectile.Definition.CollidesWithTerrain)
             {
-                var lastSafe = LastSafeProjectilePosition(from, projectile.Velocity, projectile.Definition.Radius);
+                var lastSafe = _space.ClampProjectileMovement(
+                    from,
+                    projectile.Velocity,
+                    projectile.Definition.Radius);
                 blockedByTerrain = lastSafe != destination;
                 destination = lastSafe;
             }
@@ -200,7 +203,7 @@ public sealed partial class BattleInstance
         List<BattleEvent> events)
     {
         if (!projectile.Definition.CollidesWithTerrain ||
-            !IntersectsTerrain(projectile.Position, projectile.Definition.Radius))
+            !_space.IntersectsTerrain(projectile.Position, projectile.Definition.Radius))
         {
             return false;
         }
@@ -208,46 +211,6 @@ public sealed partial class BattleInstance
         DespawnProjectile(projectile, events);
         return true;
     }
-
-    private FixVector2 LastSafeProjectilePosition(FixVector2 from, FixVector2 delta, Fix64 radius)
-    {
-        if (delta == FixVector2.Zero || IntersectsTerrain(from + delta, radius) is false)
-        {
-            return from + delta;
-        }
-
-        if (IntersectsTerrain(from, radius))
-        {
-            return from;
-        }
-
-        var maximumAxisDistance = Fix64.Max(Fix64.Abs(delta.X), Fix64.Abs(delta.Y));
-        var sampleDistanceRaw = System.Math.Max(1, radius.RawValue / 2);
-        var sampleCount = maximumAxisDistance.RawValue / sampleDistanceRaw;
-        if (maximumAxisDistance.RawValue % sampleDistanceRaw != 0)
-        {
-            sampleCount++;
-        }
-
-        sampleCount = System.Math.Max(1, sampleCount);
-        var previous = from;
-        for (long sample = 1; sample <= sampleCount; sample++)
-        {
-            var fraction = Fix64.FromRatio(sample, sampleCount);
-            var candidate = from + (delta * fraction);
-            if (IntersectsTerrain(candidate, radius))
-            {
-                return previous;
-            }
-
-            previous = candidate;
-        }
-
-        return from + delta;
-    }
-
-    private bool IntersectsTerrain(FixVector2 position, Fix64 radius) =>
-        _map.Terrain.Any(blocker => blocker.IntersectsCircle(position, radius));
 
     private bool TryCollideProjectile(ProjectileState projectile, List<BattleEvent> events)
     {

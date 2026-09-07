@@ -37,6 +37,10 @@ public sealed record StopMovingCommand(
     long Frame,
     long CharacterId) : BattleCommand(Frame);
 
+public sealed record JumpCommand(
+    long Frame,
+    long CharacterId) : BattleCommand(Frame);
+
 public sealed record SetFacingCommand(
     long Frame,
     long CharacterId,

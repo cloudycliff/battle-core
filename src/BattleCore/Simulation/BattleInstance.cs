@@ -4,6 +4,7 @@ using BattleCore.Math;
 using BattleCore.Projectiles;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
+using BattleCore.Simulation.Spatial;
 
 namespace BattleCore.Simulation;
 
@@ -17,6 +18,7 @@ public sealed partial class BattleInstance
 
     private readonly BattleConfig _config;
     private readonly MapConfig _map;
+    private readonly ISpatialBackend _space;
     private readonly SpawnTable _spawnTable;
     private readonly long _maxFrames;
     private readonly SortedDictionary<long, List<ScheduledSpawn>> _scheduledSpawns = [];
@@ -50,6 +52,13 @@ public sealed partial class BattleInstance
 
         _config = config;
         _map = map;
+        _space = map.SpatialMode switch
+        {
+            SpatialMode.TopDown => new TopDownSpatialBackend(map, _characters),
+            SpatialMode.SideView => new SideViewSpatialBackend(map, _characters),
+            _ => throw new ConfigurationException(
+                [$"Unknown spatial mode '{map.SpatialMode}'."]),
+        };
         _spawnTable = spawnTable ?? SpawnTable.Empty;
         _maxFrames = maxFrames;
         Seed = seed;
@@ -59,6 +68,7 @@ public sealed partial class BattleInstance
 
     public ulong Seed { get; }
     public long CurrentFrame { get; private set; }
+    public SpatialMode SpatialMode => _space.Mode;
 
     public bool Enqueue(BattleCommand command)
     {

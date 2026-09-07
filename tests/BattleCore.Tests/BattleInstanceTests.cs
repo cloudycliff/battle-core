@@ -70,6 +70,25 @@ public sealed class BattleInstanceTests
     }
 
     [Fact]
+    public void MoveTo_ContinuesAcrossFramesUntilDestination()
+    {
+        var battle = TestBattleFactory.CreateBattle();
+        battle.Enqueue(new SpawnCharacterCommand(0, "hero", 1, Point(2, 2)));
+        battle.Tick();
+        battle.Enqueue(new MoveToCommand(1, 1, Point(3, 2)));
+
+        var movedFrames = 0;
+        for (var frame = 1; frame <= 12; frame++)
+        {
+            movedFrames += battle.Tick().OfType<CharacterMovedEvent>().Count();
+        }
+
+        Assert.True(movedFrames > 1);
+        Assert.Equal(Point(3, 2), battle.GetCharacter(1)!.Position);
+        Assert.Empty(battle.Tick().OfType<CharacterMovedEvent>());
+    }
+
+    [Fact]
     public void NonBlockingUnit_IgnoresEnemiesButNotTerrain()
     {
         // Review round-2 N3: blocksMovement=false used to skip terrain too.

@@ -86,6 +86,16 @@
       "required": ["bounds"],
       "properties": {
         "bounds": { "$ref": "#/definitions/aabb" },
+        "spatialMode": { "enum": ["TopDown", "SideView"] },
+        "sideView": {
+          "type": "object",
+          "required": ["gravity", "maximumFallSpeed", "jumpSpeed"],
+          "properties": {
+            "gravity": { "$ref": "#/definitions/fix64" },
+            "maximumFallSpeed": { "$ref": "#/definitions/fix64" },
+            "jumpSpeed": { "$ref": "#/definitions/fix64" }
+          }
+        },
         "terrain": { "type": "array", "items": { "$ref": "#/definitions/aabb" } },
         "spawnPoints": {
           "type": "array",
