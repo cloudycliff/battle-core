@@ -4,9 +4,11 @@
 
 宿主 / 外围 agent 入口：[host-handoff.md](host-handoff.md)。怎么 Tick：[user-guide.md](user-guide.md)。测试表示当前代码实际行为；若测试与冻结规则冲突，视为实现或文档漂移，不自动改变规则。
 
-最后更新：2026-08-28。
+最后更新：2026-09-07。
 
 > **2026-08-28 审查与修复**：两轮全面审查见 [review-2026-08-28.md](review-2026-08-28.md) 与 [review-2026-08-28-round2.md](review-2026-08-28-round2.md)。第一批 8 项已修（弹体扫掠、NormalizeOrZero 除零、属性缺失防崩、眩晕取消时间轴、PreventRevive 挡 Lives、非阻挡单位撞地形、Carry 落点复验、确定性黄金回归测试），其余问题按 round2 文档「合并修复顺序」排队。
+>
+> **2026-09-07**：横版不另写战斗核。共用推演核、分叉空间后端已拍板（[ADR 0043](adr/0043-shared-kernel-split-space.md)），工作说明 [space-modes.md](space-modes.md)。V1 仍只编码俯视。
 
 ---
 
@@ -36,7 +38,7 @@
 
 ## 已设计、尚未编码
 
-无（V1 战斗触发已编码。获得/失去 Buff 触发见「明确不做」）。
+- **空间后端分叉 / 横版 `SideView`**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[space-modes.md](space-modes.md)）：同一套 Tick/管道/Buff/技能时间轴；抽出空间服务后接重力、接地、平台顶边。未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
 
 被动技能：核内就是永久 Buff + 触发或 ModifierSource；玩家侧由宿主包装。
 
@@ -76,7 +78,7 @@
 - **Carry 随载体技能位移同帧跟随**（[ADR 0004](adr/0004-carry-relation.md)、[ADR 0037](adr/0037-skill-knockback-pull.md)）：保持偏移，结束 Carry 时校正落点。
 - **死亡状态清理**（[ADR 0012](adr/0012-lives-and-skill-revive.md)）：清普通 Buff、护盾、技能/移动/软锁/Carry；保留 PreventRevive、CD、ModifierSource。
 - **指向技能起手转向**（[ADR 0040](adr/0040-cast-facing-updates-on-accept.md)）：Cast 校验成功即更新 Facing，之后取消不回滚。
-- **Buff 战斗触发**（[ADR 0029](adr/0029-buff-combat-triggers.md)）：造成/受到伤害、击杀、起手施法；一层；动作不含再造成伤害。获得/失去 Buff 触发 V1 不做。
+- **共用推演核、分叉空间后端**（[ADR 0043](adr/0043-shared-kernel-split-space.md)）：俯视与横版共用伤害/Buff/时间轴；移动与碰撞按模式各写一套。V1 只实现 `TopDown`。工作说明 [space-modes.md](space-modes.md)。
 
 ---
 
@@ -91,5 +93,5 @@
 1. 外围接入：[host-handoff.md](host-handoff.md)
 2. 本页
 3. [user-guide.md](user-guide.md)
-4. 相关 ADR
+4. 相关 ADR；做横版或改移动时先读 [space-modes.md](space-modes.md) 与 [ADR 0043](adr/0043-shared-kernel-split-space.md)
 5. `tests/BattleCore.Tests/`

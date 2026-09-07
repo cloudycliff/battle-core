@@ -100,4 +100,4 @@ dotnet test BattleCore.slnx --configuration Release
 
 ## 明确不要做的外围工作
 
-引导施法、A*、滑墙互推、跟踪弹、清波/进区刷怪、外交矩阵、可破坏地形、核内背包、FrameHash/回放。见需求非目标与 status「V1 明确不做」。
+引导施法、A*、滑墙互推、跟踪弹、清波/进区刷怪、外交矩阵、可破坏地形、核内背包、FrameHash/回放。见需求非目标与 status「V1 明确不做」。不要用每帧向下的 `MoveDirection` 冒充重力或横版；横版走核内空间后端，见 [space-modes.md](space-modes.md)。
