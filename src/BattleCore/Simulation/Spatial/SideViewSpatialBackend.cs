@@ -32,6 +32,39 @@ internal sealed class SideViewSpatialBackend(
         return FixVector2.Zero;
     }
 
+    public FixVector2 ClampAim(FixVector2 direction, Facing facing)
+    {
+        if (direction == FixVector2.Zero)
+        {
+            return FixVector2.Zero;
+        }
+
+        if (direction.X > Fix64.Zero)
+        {
+            return new FixVector2(Fix64.One, Fix64.Zero);
+        }
+
+        if (direction.X < Fix64.Zero)
+        {
+            return new FixVector2(-Fix64.One, Fix64.Zero);
+        }
+
+        return HorizontalFromFacing(facing);
+    }
+
+    public Facing ClampFacing(Facing facing) =>
+        IsFacingLeft(facing) ? new Facing(512) : new Facing(0);
+
+    public bool UpdatesFacingFromMovement => true;
+
+    private static bool IsFacingLeft(Facing facing) =>
+        facing.Step > 256 && facing.Step < 768;
+
+    private static FixVector2 HorizontalFromFacing(Facing facing) =>
+        IsFacingLeft(facing)
+            ? new FixVector2(-Fix64.One, Fix64.Zero)
+            : new FixVector2(Fix64.One, Fix64.Zero);
+
     public void InitializeCharacter(CharacterState character)
     {
         character.VerticalVelocity = Fix64.Zero;

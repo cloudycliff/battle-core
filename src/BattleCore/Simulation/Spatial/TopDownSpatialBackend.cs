@@ -14,6 +14,13 @@ internal sealed class TopDownSpatialBackend(
     public FixVector2 NormalizeMoveDirection(FixVector2 direction) =>
         direction.NormalizeOrZero();
 
+    public FixVector2 ClampAim(FixVector2 direction, Facing _) =>
+        direction.NormalizeOrZero();
+
+    public Facing ClampFacing(Facing facing) => facing;
+
+    public bool UpdatesFacingFromMovement => false;
+
     public void InitializeCharacter(CharacterState character)
     {
         character.Grounded = false;

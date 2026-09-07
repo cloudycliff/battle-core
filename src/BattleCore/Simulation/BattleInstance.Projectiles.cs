@@ -26,6 +26,7 @@ public sealed partial class BattleInstance
         }
 
         var direction = ResolveProjectileDirection(caster, cast);
+        direction = _space.ClampAim(direction, caster.Facing);
         if (direction == FixVector2.Zero)
         {
             return;

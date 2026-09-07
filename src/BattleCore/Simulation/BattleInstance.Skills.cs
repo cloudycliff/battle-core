@@ -153,19 +153,7 @@ public sealed partial class BattleInstance
         List<BattleEvent> events)
     {
         var aim = ResolveAimDirection(caster, command.Direction, command.TargetPoint, command.TargetId);
-        if (aim == FixVector2.Zero)
-        {
-            return;
-        }
-
-        var facing = Facing.FromDirection(aim);
-        if (caster.Facing == facing)
-        {
-            return;
-        }
-
-        caster.Facing = facing;
-        events.Add(new FacingChangedEvent(CurrentFrame, caster.Id, facing));
+        FaceToward(caster, aim, events);
     }
 
     private bool TryValidateSkillRange(
@@ -550,19 +538,44 @@ public sealed partial class BattleInstance
             return;
         }
 
-        var desiredDelta = cast.Direction is { } direction &&
-                           direction != FixVector2.Zero
-            ? direction * effect.Distance
-            : cast.TargetPoint is { } targetPoint
+        FixVector2 desiredDelta;
+        if (cast.Direction is { } direction && direction != FixVector2.Zero)
+        {
+            var aim = _space.ClampAim(direction, caster.Facing);
+            if (aim == FixVector2.Zero)
+            {
+                return;
+            }
+
+            desiredDelta = aim * effect.Distance;
+        }
+        else
+        {
+            desiredDelta = cast.TargetPoint is { } targetPoint
                 ? DeltaToward(caster.Position, targetPoint, effect.Distance)
                 : cast.ExplicitTargetId is long targetId &&
                   _characters.TryGetValue(targetId, out var target)
                     ? (target.Position - caster.Position).NormalizeOrZero() *
                       effect.Distance
                     : FixVector2.Zero;
-        if (desiredDelta == FixVector2.Zero)
-        {
-            return;
+            if (desiredDelta == FixVector2.Zero)
+            {
+                return;
+            }
+
+            var aim = _space.ClampAim(desiredDelta, caster.Facing);
+            if (aim == FixVector2.Zero)
+            {
+                return;
+            }
+
+            var along = FixVector2.Dot(desiredDelta, aim);
+            if (along == Fix64.Zero)
+            {
+                along = effect.Distance;
+            }
+
+            desiredDelta = aim * along;
         }
 
         var from = caster.Position;
@@ -725,7 +738,9 @@ public sealed partial class BattleInstance
                 target.CorpsesOnly),
             SkillTargetKind.FanAtCaster => ResolveFan(
                 caster,
-                cast.Direction,
+                _space.ClampAim(
+                    cast.Direction ?? FixVector2.Zero,
+                    caster.Facing),
                 target.Radius,
                 target.MinimumDot,
                 target.CorpsesOnly),

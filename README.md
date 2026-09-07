@@ -14,7 +14,7 @@ Add a project reference to `src/BattleCore/BattleCore.csproj` (`net8.0`).
 
 ## Status
 
-Usable for a host: movement, skills (range, facing-on-cast, dash, knockback/pull), damage pipeline, resource costs, buffs (combat triggers, immunity, untargetable), linear projectiles (terrain collision), area effects, four built-in Brains with spawn leash, skill summons, carry/throw, pickups, corpse revive skills, named modifier sources, time-based spawn tables, JSON config loader.
+Usable for a host: movement, skills (range, facing-on-cast, dash, knockback/pull), damage pipeline, resource costs, buffs (combat triggers, immunity, untargetable), linear projectiles (terrain collision), area effects, four built-in Brains with spawn leash, skill summons, carry/throw, pickups, corpse revive skills, named modifier sources, time-based spawn tables, JSON config loader. Optional `SideView` map mode (gravity, jump, left/right facing) with `samples/sideview.bundle.json`.
 
 Not in core yet (host must work around or wait): spawn-table RNG composition. See [docs/status.md](docs/status.md).
 

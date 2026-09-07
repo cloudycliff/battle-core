@@ -14,6 +14,8 @@
 > 和 `JumpCommand`。`MapConfig` / JSON 支持 `spatialMode`（默认 `TopDown`）
 > 及显式横版参数（[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)）。
 > Forced 技能位移在横版为水平推挤加弹道竖直冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。
+> 横版朝向只认左右（[ADR 0046](adr/0046-side-view-facing-left-right.md)）。
+> 样例：`samples/arena.bundle.json`（俯视）、`samples/sideview.bundle.json`（横版推图）。
 
 ---
 
@@ -43,7 +45,7 @@
 
 ## 已设计、尚未编码
 
-- **横版后续能力**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)、[ADR 0045](adr/0045-side-view-forced-displacement.md)、[space-modes.md](space-modes.md)）：基础后端与 Forced 位移已编码；自动跳台 Brain、单向台、斜坡和移动平台尚未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
+- **横版后续能力**（[ADR 0043](adr/0043-shared-kernel-split-space.md)、[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)、[ADR 0045](adr/0045-side-view-forced-displacement.md)、[ADR 0046](adr/0046-side-view-facing-left-right.md)、[space-modes.md](space-modes.md)）：基础后端、Forced 位移与左右朝向已编码；自动跳台 Brain、单向台、斜坡和移动平台尚未编码。不扩大 V1 俯视承诺。宿主不得用向下移动冒充重力。格斗帧对战仍不做。
 
 被动技能：核内就是永久 Buff + 触发或 ModifierSource；玩家侧由宿主包装。
 
@@ -86,6 +88,7 @@
 - **Buff 战斗触发**（[ADR 0029](adr/0029-buff-combat-triggers.md)）：造成/受到伤害、击杀、起手施法；一层；动作不含再造成伤害。获得/失去 Buff 触发 V1 不做。
 - **共用推演核、分叉空间后端**（[ADR 0043](adr/0043-shared-kernel-split-space.md)）：俯视与横版共用伤害/Buff/时间轴；移动与碰撞按模式各写一套。工作说明 [space-modes.md](space-modes.md)。
 - **横版 Forced 位移**（[ADR 0045](adr/0045-side-view-forced-displacement.md)）：冲锋/击退/拉人/投掷在 SideView 为水平推挤加弹道竖直冲量；俯视仍缩短路径。
+- **横版朝向左右**（[ADR 0046](adr/0046-side-view-facing-left-right.md)）：瞄准/扇形/冲锋/弹体/`SetFacing` 夹成 ±X；击退向量不夹，向上施法仍能打飞。
 
 ---
 

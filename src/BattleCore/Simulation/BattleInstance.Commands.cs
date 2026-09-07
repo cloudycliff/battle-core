@@ -1,6 +1,7 @@
 using BattleCore.Attributes;
 using BattleCore.Brains;
 using BattleCore.Combat;
+using BattleCore.Math;
 using BattleCore.Randomness;
 using BattleCore.Simulation.Commands;
 using BattleCore.Simulation.Events;
@@ -37,8 +38,14 @@ public sealed partial class BattleInstance
                 break;
             case MoveDirectionCommand move:
                 WithLiving(move.CharacterId, command, events, character =>
-                    character.Movement = MovementIntent.Direction(
-                        _space.NormalizeMoveDirection(move.Direction)));
+                {
+                    var direction = _space.NormalizeMoveDirection(move.Direction);
+                    character.Movement = MovementIntent.Direction(direction);
+                    if (_space.UpdatesFacingFromMovement)
+                    {
+                        FaceToward(character, direction, events);
+                    }
+                });
                 break;
             case MoveToCommand moveTo:
                 WithLiving(moveTo.CharacterId, command, events, character =>
@@ -64,18 +71,7 @@ public sealed partial class BattleInstance
                 break;
             case SetFacingCommand facing:
                 WithLiving(facing.CharacterId, command, events, character =>
-                {
-                    if (character.Facing == facing.Facing)
-                    {
-                        return;
-                    }
-
-                    character.Facing = facing.Facing;
-                    events.Add(new FacingChangedEvent(
-                        CurrentFrame,
-                        character.Id,
-                        character.Facing));
-                });
+                    ApplyFacing(character, facing.Facing, events));
                 break;
             case SetTargetCommand target:
                 SetTarget(target, events);
@@ -279,6 +275,35 @@ public sealed partial class BattleInstance
 
         Reject(command, events, $"Character '{characterId}' does not exist.");
         return false;
+    }
+
+    private void FaceToward(
+        CharacterState character,
+        FixVector2 direction,
+        List<BattleEvent> events)
+    {
+        var aim = _space.ClampAim(direction, character.Facing);
+        if (aim == FixVector2.Zero)
+        {
+            return;
+        }
+
+        ApplyFacing(character, Facing.FromDirection(aim), events);
+    }
+
+    private void ApplyFacing(
+        CharacterState character,
+        Facing facing,
+        List<BattleEvent> events)
+    {
+        facing = _space.ClampFacing(facing);
+        if (character.Facing == facing)
+        {
+            return;
+        }
+
+        character.Facing = facing;
+        events.Add(new FacingChangedEvent(CurrentFrame, character.Id, facing));
     }
 
     private void Reject(BattleCommand command, List<BattleEvent> events, string reason) =>

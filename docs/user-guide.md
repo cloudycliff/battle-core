@@ -4,7 +4,7 @@
 
 术语和冻结规则以 [CONTEXT.md](../CONTEXT.md)、[V1 需求](v1-requirements.md) 与对应 [ADR](adr/) 为准。本页只说明当前接入方式，不另行定义行为。
 
-当前配置入口是**内存对象**（C# 构造）。也可以用附带的 JSON 加载器：`BattleJson.LoadBattleConfig` / `LoadMapConfig` / `LoadSpawnTable` / `LoadBundle`。Schema 在 [schemas/](../schemas/)，样例在 [samples/arena.bundle.json](../samples/arena.bundle.json)。你仍可用任何格式在核外反序列化，再 `new` 这些类型。战斗中不能热更。
+当前配置入口是**内存对象**（C# 构造）。也可以用附带的 JSON 加载器：`BattleJson.LoadBattleConfig` / `LoadMapConfig` / `LoadSpawnTable` / `LoadBundle`。Schema 在 [schemas/](../schemas/)，样例在 [samples/arena.bundle.json](../samples/arena.bundle.json)（俯视）与 [samples/sideview.bundle.json](../samples/sideview.bundle.json)（横版推图）。你仍可用任何格式在核外反序列化，再 `new` 这些类型。战斗中不能热更。
 
 ---
 
@@ -242,6 +242,7 @@ using BattleCore.Serialization;
 
 var bundle = BattleJson.LoadBundle(File.ReadAllText("samples/arena.bundle.json"));
 var battle = bundle.CreateBattle();
+// 横版推图：samples/sideview.bundle.json（spatialMode SideView，出生点 Y = 地板 + 半径）
 ```
 
 空间量必须是整数米、`{"n":1,"d":2}` 或 `{"raw":32768}`，**不要写 JSON 浮点**（如 `0.5`）。枚举用 C# 标识符（`True`、`ExplicitTarget`、`ChaseAttack`）；效果 `kind` 用 camelCase（`damage`、`applyBuff`）。
@@ -295,7 +296,7 @@ var battle = bundle.CreateBattle();
 
 技能可设 `Range`：`> 0` 时 `CastSkill` 校验指向点或显式/当前目标（目标型加目标半径）。未配或 ≤0 不限制。自身、施法者中心范围、只有方向没有点的冲锋/弹体不检水平距离。超距拒绝不扣资源、不进 CD。
 
-带非零 `Direction`、`TargetPoint` 或 `TargetId` 的施法在校验通过、时间轴开始时立刻改 `Facing`（step 0 = +X，逆时针 1024 档），之后取消不回滚。自身技能或没有可用瞄准方向的施法不改朝向。仍可用 `SetFacing`。
+带非零 `Direction`、`TargetPoint` 或 `TargetId` 的施法在校验通过、时间轴开始时立刻改 `Facing`（step 0 = +X，逆时针 1024 档），之后取消不回滚。自身技能或没有可用瞄准方向的施法不改朝向。仍可用 `SetFacing`。`SideView` 把瞄准、扇形、冲锋、弹体和 `SetFacing` 夹成左右（0 或 512）；纯竖直瞄准保持当前左右。击退/拉人/投掷仍用未夹的方向，所以向上施法仍能打飞。见 [ADR 0046](adr/0046-side-view-facing-left-right.md)。
 
 冷却按逻辑帧。技能可声明一种或多种资源消耗：`BattleConfig` 声明资源 ID 与上限，模板给初值。起手时原子扣除，不够则拒绝且不进 CD。死亡保留当前值。回复用 `GrantResourceCommand`、即时拾取或周期资源 Buff。默认真言类会被沉默阻止起手，武器类会被缴械阻止起手（`SkillCategory`）。眩晕取消当前施法；受伤不打断。V1 不允许取消后摇，整个时间轴结束前不能再次起手。`CanMoveWhileCasting` 控制前摇/后摇能否走。
 
@@ -340,6 +341,8 @@ MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 被忽略，重力由核自动推进。落地角色用 `JumpCommand` 起跳。查询
 `CharacterSnapshot.Grounded` 和 `VerticalVelocity` 可驱动落地/腾空表现。
 横版击退与冲锋见 [ADR 0045](adr/0045-side-view-forced-displacement.md)：水平当帧推挤，竖直为弹道冲量。
+横版朝向见 [ADR 0046](adr/0046-side-view-facing-left-right.md)：逻辑上只有左右；走动会改朝向，俯视不会。
+推图样例 [samples/sideview.bundle.json](../samples/sideview.bundle.json) 用地图 `Bounds.Min.Y` 当地板、空 `terrain`，出生点 Y 为 `Min.Y + radius`。
 基础横版仍使用圆形角色占用与实心 AABB，不含单向台、斜坡和移动平台。
 
 `SpawnPoint.TableEntryId` 指向 `SpawnTableEntry`。条目的 `Frame` 从战斗开始算（第 0 帧是第一次 `Tick`）。同一点 `Count > 1` 会在同一位置刷多只（同阵营可重叠）。
@@ -365,8 +368,8 @@ MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 
 ### 命令（均带逻辑帧戳）
 
-移动：方向 / `MoveTo` / 停止。`MoveTo` 直线走，无寻路；被挡无法接近终点则取消。  
-朝向：`SetFacing`，或带方向/目标点/显式目标的 `CastSkill` 起手成功时自动转向（取消不回滚）。受伤不转向。全圆 1024 档，step 0 朝 +X。  
+移动：方向 / `MoveTo` / 停止。`MoveTo` 直线走，无寻路；被挡无法接近终点则取消。横版另有 `JumpCommand`（须接地）。  
+朝向：`SetFacing`，或带方向/目标点/显式目标的 `CastSkill` 起手成功时自动转向（取消不回滚）。受伤不转向。全圆 1024 档，step 0 朝 +X。横版只使用 0 / 512，走动会改朝向。  
 目标：`SetTarget` 软锁；技能是否打它由选敌器决定。  
 战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、`GrantResource`、Buff 添加/移除/驱散、`Revive`（允许复活且未被禁止复活的友方 Dead）。
 生成：`SpawnCharacter`（可 `BrainId`、`OwnerId`、覆盖初始 HP、开局 `ModifierSources`）、`SpawnPickup`。
@@ -390,7 +393,7 @@ MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 
 ## 8. 现在能做什么 / 先别指望什么
 
-**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋/击退/拉人）、直线穿透弹（可撞地形）、区域效果（来源快照与独立 RNG）、Buff（含战斗触发、伤害免疫、不可选中）与控制、四种 Brain（含 leash）、技能召唤 Character、Carry、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源、技能资源池、按帧刷怪表、JSON 样例加载器、`maxFrames` 超时。
+**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋/击退/拉人）、直线穿透弹（可撞地形）、区域效果（来源快照与独立 RNG）、Buff（含战斗触发、伤害免疫、不可选中）与控制、四种 Brain（含 leash）、技能召唤 Character、Carry、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源、技能资源池、按帧刷怪表、JSON 样例加载器、`maxFrames` 超时。可选 `SideView`（重力、跳跃、左右朝向；样例 `samples/sideview.bundle.json`）。
 
 **V1 写了但还没做：** 战斗级 RNG 用于随机组成（刷怪当前是全确定表）。进度总表见 [status.md](status.md)。
 

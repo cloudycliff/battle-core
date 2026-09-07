@@ -1,0 +1,121 @@
+{
+  "$schema": "../schemas/battle-bundle.schema.json",
+  "seed": 123,
+  "maxFrames": 2000,
+  "battle": {
+    "attributeIds": [
+      "max_hp",
+      "physical_defense",
+      "magical_defense",
+      "crit_rate",
+      "crit_damage",
+      "damage_dealt",
+      "damage_taken",
+      "move_speed",
+      "attack"
+    ],
+    "bindings": {
+      "maxHp": "max_hp",
+      "physicalDefense": "physical_defense",
+      "magicalDefense": "magical_defense",
+      "critRate": "crit_rate",
+      "critDamage": "crit_damage",
+      "damageDealt": "damage_dealt",
+      "damageTaken": "damage_taken",
+      "moveSpeed": "move_speed"
+    },
+    "brains": [
+      {
+        "id": "chase",
+        "kind": "ChaseAttack",
+        "aggroRadius": 16,
+        "attackRange": 6,
+        "leashRadius": 24
+      }
+    ],
+    "skills": [
+      {
+        "id": "strike",
+        "durationFrames": 1,
+        "cooldownFrames": 15,
+        "range": 6,
+        "effects": [
+          {
+            "kind": "damage",
+            "frame": 0,
+            "target": { "kind": "CurrentTarget", "relation": "Enemies" },
+            "damageType": "Physical",
+            "flat": 0,
+            "attributeId": "attack",
+            "ratio": 10000,
+            "canCrit": true
+          }
+        ]
+      }
+    ],
+    "characterTemplates": [
+      {
+        "id": "hero",
+        "radius": { "n": 1, "d": 2 },
+        "skillIds": ["strike"],
+        "baseAttributes": {
+          "max_hp": 100,
+          "physical_defense": 0,
+          "magical_defense": 0,
+          "crit_rate": 0,
+          "crit_damage": 15000,
+          "damage_dealt": 0,
+          "damage_taken": 0,
+          "move_speed": 4,
+          "attack": 20
+        }
+      },
+      {
+        "id": "bandit",
+        "radius": { "n": 1, "d": 2 },
+        "brainId": "chase",
+        "skillIds": ["strike"],
+        "baseAttributes": {
+          "max_hp": 40,
+          "physical_defense": 0,
+          "magical_defense": 0,
+          "crit_rate": 0,
+          "crit_damage": 15000,
+          "damage_dealt": 0,
+          "damage_taken": 0,
+          "move_speed": 3,
+          "attack": 8
+        }
+      }
+    ]
+  },
+  "map": {
+    "spatialMode": "SideView",
+    "sideView": {
+      "gravity": 30,
+      "maximumFallSpeed": 20,
+      "jumpSpeed": 10
+    },
+    "bounds": {
+      "min": { "x": 0, "y": 0 },
+      "max": { "x": 40, "y": 8 }
+    },
+    "playerSpawnMarkers": [
+      { "id": "player", "position": { "x": 3, "y": { "n": 1, "d": 2 } } }
+    ],
+    "spawnPoints": [
+      { "id": "wave", "position": { "x": 18, "y": { "n": 1, "d": 2 } }, "tableEntryId": "bandits" }
+    ]
+  },
+  "spawnTable": {
+    "entries": [
+      {
+        "id": "bandits",
+        "templateId": "bandit",
+        "factionId": 2,
+        "frame": 2,
+        "count": 1
+      }
+    ]
+  }
+}

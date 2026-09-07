@@ -13,6 +13,16 @@ internal interface ISpatialBackend
 
     FixVector2 NormalizeMoveDirection(FixVector2 direction);
 
+    /// <summary>
+    /// SideView keeps only ±X; a purely vertical aim keeps the current facing.
+    /// TopDown returns the normalized vector unchanged.
+    /// </summary>
+    FixVector2 ClampAim(FixVector2 direction, Facing facing);
+
+    Facing ClampFacing(Facing facing);
+
+    bool UpdatesFacingFromMovement { get; }
+
     void InitializeCharacter(CharacterState character);
 
     FixVector2 GetFrameDelta(

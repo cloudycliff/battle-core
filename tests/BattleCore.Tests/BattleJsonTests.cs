@@ -48,6 +48,38 @@ public sealed class BattleJsonTests
     }
 
     [Fact]
+    public void LoadSideViewSample_SpawnsGroundedOnTheFloor()
+    {
+        var json = File.ReadAllText(SamplePath("sideview.bundle.json"));
+        var bundle = BattleJson.LoadBundle(json);
+        var battle = BattleJson.CreateBattle(json);
+
+        Assert.Equal(SpatialMode.SideView, bundle.Map.SpatialMode);
+        Assert.Equal(SpatialMode.SideView, battle.SpatialMode);
+        Assert.Empty(bundle.Map.Terrain);
+
+        var marker = Assert.Single(battle.GetPlayerSpawnMarkers());
+        Assert.Equal(Fix64.FromRatio(1, 2), marker.Position.Y);
+
+        battle.Enqueue(new SpawnCharacterCommand(
+            0,
+            "hero",
+            1,
+            marker.Position,
+            PlayerControlled: true));
+        Assert.Single(battle.Tick().OfType<CharacterSpawnedEvent>());
+
+        var player = battle.GetCharacter(1)!;
+        Assert.True(player.Grounded);
+        Assert.Equal(Fix64.FromRatio(1, 2), player.Position.Y);
+        Assert.Empty(battle.Tick().OfType<CharacterSpawnedEvent>());
+
+        var spawned = Assert.Single(battle.Tick().OfType<CharacterSpawnedEvent>());
+        Assert.Equal("bandit", spawned.TemplateId);
+        Assert.True(battle.GetCharacter(spawned.CharacterId)!.Grounded);
+    }
+
+    [Fact]
     public void LoadBundle_ReadsSideViewModeAndCreatesBattle()
     {
         var json = File.ReadAllText(SamplePath("arena.bundle.json"))

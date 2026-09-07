@@ -58,6 +58,11 @@ public sealed partial class BattleInstance
                 from,
                 character.Position));
 
+            if (_space.UpdatesFacingFromMovement)
+            {
+                FaceToward(character, destination - from, events);
+            }
+
             if (character.Movement.Kind == MovementKind.Destination)
             {
                 var reached = _space.HasReachedDestination(

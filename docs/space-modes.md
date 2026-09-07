@@ -7,8 +7,10 @@
 `TopDown`。`SideViewSpatialBackend` 已实现基础重力、接地、水平移动、
 平台顶边/天花板阻挡和 `JumpCommand`；重力参数、接地和跳跃语义见
 [ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)。
-横版技能位移：水平当帧推挤，竖直按弹道冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。自动跳台
-Brain、单向台等仍未实现。
+横版技能位移：水平当帧推挤，竖直按弹道冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。
+横版朝向只认左右（[ADR 0046](adr/0046-side-view-facing-left-right.md)）。
+推图样例：[samples/sideview.bundle.json](../samples/sideview.bundle.json)（单层地板、空地形、出生点在 `Min.Y + radius`）。
+自动跳台 Brain、单向台等仍未实现。
 不要在宿主里用向下 `MoveDirection` 冒充重力，也不要另开一套伤害/Buff 核。
 
 ---
@@ -20,7 +22,7 @@ Brain、单向台等仍未实现。
 3. **不要把两种移动揉进当前 `BattleInstance`。** 俯视是缩短/取消位移、不滑墙；横版要重力、接地、站在 AABB 顶边。用模式开关散落在技能/击退/Brain 里会拆掉 V1 契约。
 4. **一张图一种模式。** 创建 `BattleInstance` 时选定 `TopDown` 或 `SideView`，同场不混用。
 
-横版第一目标是空洞骑士 / Dead Cells 一类实时技能动作，不是格斗帧对战。格斗（帧表、取消、判定跟动画帧绑定）仍不进本核。
+横版第一目标是 2D 横版推图（单层地板、不跳台），不是格斗帧对战。格斗（帧表、取消、判定跟动画帧绑定）仍不进本核。
 
 ---
 
@@ -91,7 +93,7 @@ Brain、单向台等仍未实现。
 3. **实现 `SideViewSpace`：** 重力、接地、水平移动、跳；地形顶边可站。单测用窄平台与墙，锁落地与「不会穿顶」。**已完成基础版。**
 4. **击退 / Dash / Carry 落点走空间后端**，不要在技能文件里写第二套位移。**已完成：俯视仍缩短路径；横版 Forced 为水平推挤 + 弹道竖直冲量。**
 5. **Brain：** 横版先 Idle + 水平 Chase；会跳沟的 Brain 后做。
-6. **Facing：** 横版施法仍更新朝向，但移动只消费左右；全圆档可保留以免改事件协议。
+6. **Facing：** 横版施法、走动、扇形、冲锋、弹体只消费左右；全圆 1024 档保留，step 0 / 512 表示 ±X。[ADR 0046](adr/0046-side-view-facing-left-right.md) **已完成。**
 
 同场混用两种空间模式不做。需要「侧视演出的俯视砍杀」时，用 `TopDown` + 宿主表现，不要开 `SideView`。
 
