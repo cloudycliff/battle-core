@@ -9,8 +9,11 @@
 [ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)。
 横版技能位移：水平当帧推挤，竖直按弹道冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。
 横版朝向只认左右（[ADR 0046](adr/0046-side-view-facing-left-right.md)）。
-横版施法射程与 Brain 的仇恨、攻击、leash、跟随距离只看 X
-（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）。
+横版施法射程与 Brain 的仇恨、攻击距离只看 X，但目标须在 `VerticalReach`
+竖直带内；leash、跟随距离只看 X
+（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)、[ADR 0049](adr/0049-side-view-vertical-reach.md)）。
+接地按向下探针是否被挡判定，站在阻挡单位头上也算接地
+（[ADR 0050](adr/0050-side-view-grounding-is-a-blocked-probe.md)）。
 推图样例：[samples/sideview.bundle.json](../samples/sideview.bundle.json)（单层地板、空地形、出生点在 `Min.Y + radius`）。
 自动跳台 Brain、单向台等仍未实现。
 不要在宿主里用向下 `MoveDirection` 冒充重力，也不要另开一套伤害/Buff 核。
@@ -74,7 +77,7 @@
 
 - X 水平，Y 向上为高度；地图边界仍是矩形。
 - 每逻辑帧施加重力与最大下落速度（定点，配置进 Map 或 Battle Config）。
-- 接地：圆或盒与地形 AABB **顶边**接触且速度向下或为零，则视为落地，可走、可跳。
+- 接地：速度向下或为零，且向下极短探针会被地板、地形（顶边或角）或阻挡单位挡住，则视为落地，可走、可跳（[ADR 0050](adr/0050-side-view-grounding-is-a-blocked-probe.md)）。
 - `MoveDirection` 的 Y 分量在横版忽略或拒绝（只认水平）；跳跃是独立命令或技能效果，不是「向上移动」。
 - 击退拆水平和垂直；浮空中不按俯视「缩短到墙前停下」冒充落地。
 - Root 停水平移动，是否停下落另开 ADR；在拍板前不要用 Root 卡住坠落。

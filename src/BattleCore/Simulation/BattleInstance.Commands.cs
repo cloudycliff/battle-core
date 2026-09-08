@@ -49,7 +49,15 @@ public sealed partial class BattleInstance
                 break;
             case MoveToCommand moveTo:
                 WithLiving(moveTo.CharacterId, command, events, character =>
-                    character.Movement = MovementIntent.Destination(moveTo.Destination));
+                {
+                    if (!IsInsideMap(moveTo.Destination))
+                    {
+                        Reject(command, events, "MoveTo destination must lie inside map bounds.");
+                        return;
+                    }
+
+                    character.Movement = MovementIntent.Destination(moveTo.Destination);
+                });
                 break;
             case StopMovingCommand stop:
                 WithLiving(stop.CharacterId, command, events, character =>
@@ -139,7 +147,8 @@ public sealed partial class BattleInstance
             return;
         }
 
-        if (!IsPositionValid(command.Position, template.Radius, command.FactionId, template.BlocksMovement))
+        if (!IsInsideMap(command.Position) ||
+            !IsPositionValid(command.Position, template.Radius, command.FactionId, template.BlocksMovement))
         {
             Reject(command, events, "Spawn position is blocked or outside map bounds.");
             return;
@@ -305,6 +314,14 @@ public sealed partial class BattleInstance
         character.Facing = facing;
         events.Add(new FacingChangedEvent(CurrentFrame, character.Id, facing));
     }
+
+    /// <summary>
+    /// Host-supplied points must lie inside the map. Besides being the only
+    /// meaningful destination, this bounds every distance the core squares
+    /// afterwards so fixed-point math cannot overflow on absurd input.
+    /// </summary>
+    private bool IsInsideMap(FixVector2 point) =>
+        _map.Bounds.ContainsCircle(point, Fix64.Zero);
 
     private void Reject(BattleCommand command, List<BattleEvent> events, string reason) =>
         events.Add(new CommandRejectedEvent(

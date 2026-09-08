@@ -8,10 +8,32 @@ public enum SpatialMode
     SideView,
 }
 
-public sealed record SideViewSettings(
-    Fix64 Gravity,
-    Fix64 MaximumFallSpeed,
-    Fix64 JumpSpeed);
+public sealed class SideViewSettings
+{
+    public static readonly Fix64 DefaultVerticalReach = Fix64.FromInt(2);
+
+    /// <summary>
+    /// <c>VerticalReach</c> is the maximum |ΔY| for a target to count as
+    /// reachable by cast range and Brain aggro/attack range. Leash and
+    /// owner-follow distances ignore it.
+    /// </summary>
+    public SideViewSettings(
+        Fix64 Gravity,
+        Fix64 MaximumFallSpeed,
+        Fix64 JumpSpeed,
+        Fix64? VerticalReach = null)
+    {
+        this.Gravity = Gravity;
+        this.MaximumFallSpeed = MaximumFallSpeed;
+        this.JumpSpeed = JumpSpeed;
+        this.VerticalReach = VerticalReach ?? DefaultVerticalReach;
+    }
+
+    public Fix64 Gravity { get; }
+    public Fix64 MaximumFallSpeed { get; }
+    public Fix64 JumpSpeed { get; }
+    public Fix64 VerticalReach { get; }
+}
 
 public sealed class MapConfig
 {
@@ -58,6 +80,10 @@ public sealed class MapConfig
                   SideView.JumpSpeed <= Fix64.Zero))
         {
             errors.Add("Side-view gravity, maximum fall speed, and jump speed must be positive.");
+        }
+        else if (SideView is not null && SideView.VerticalReach < Fix64.Zero)
+        {
+            errors.Add("Side-view vertical reach cannot be negative.");
         }
 
         if (errors.Count > 0)

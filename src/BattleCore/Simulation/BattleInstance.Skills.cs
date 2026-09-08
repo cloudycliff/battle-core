@@ -57,12 +57,20 @@ public sealed partial class BattleInstance
             return;
         }
 
+        // Any supplied point must be inside the map: it is aimed at, dashed
+        // toward, or squared for range, and none of those may see an
+        // unbounded coordinate.
+        if (command.TargetPoint is { } suppliedPoint && !IsInsideMap(suppliedPoint))
+        {
+            Reject(command, events, "Skill target point must lie inside map bounds.");
+            return;
+        }
+
         if (skill.Effects.Any(effect =>
                 effect.Target.Kind is
                     SkillTargetKind.CircleAtPoint or
                     SkillTargetKind.RingAtPoint) &&
-            (command.TargetPoint is not FixVector2 point ||
-             !_map.Bounds.ContainsCircle(point, Fix64.Zero)))
+            command.TargetPoint is null)
         {
             Reject(command, events, "Skill requires a target point inside map bounds.");
             return;
@@ -170,7 +178,7 @@ public sealed partial class BattleInstance
         foreach (var (point, extraRadius) in EnumerateRangeAims(command, skill, caster))
         {
             var reach = skill.Range + extraRadius;
-            if (_space.RangeDistanceSquared(caster.Position, point) > reach * reach)
+            if (!_space.IsWithinReach(caster.Position, point, reach))
             {
                 Reject(command, events, "Target is out of range.");
                 return false;

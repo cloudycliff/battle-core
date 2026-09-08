@@ -16,7 +16,8 @@ public sealed partial class BattleInstance
             return;
         }
 
-        if (!_map.Bounds.ContainsCircle(command.Position, definition.Radius))
+        if (!IsInsideMap(command.Position) ||
+            !_map.Bounds.ContainsCircle(command.Position, definition.Radius))
         {
             Reject(command, events, "Pickup position is outside map bounds.");
             return;
@@ -132,6 +133,14 @@ public sealed partial class BattleInstance
                     character.Lives += lives.Amount;
                     break;
                 case PickupAttributeEffect attribute:
+                    // Any template may pick this up; skip attributes the
+                    // picker never declared instead of throwing mid-tick
+                    // (same rule as AttributeBuffEffect on a foreign target).
+                    if (!character.Attributes.Contains(attribute.AttributeId))
+                    {
+                        break;
+                    }
+
                     character.Attributes.Add(new AttributeModifier(
                         _nextModifierId++,
                         attribute.AttributeId,

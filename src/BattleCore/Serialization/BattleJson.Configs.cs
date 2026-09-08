@@ -433,7 +433,12 @@ public static partial class BattleJson
                 sideView = new SideViewSettings(
                     parse.RequireFix64(sideViewElement, "gravity", sideViewPath),
                     parse.RequireFix64(sideViewElement, "maximumFallSpeed", sideViewPath),
-                    parse.RequireFix64(sideViewElement, "jumpSpeed", sideViewPath));
+                    parse.RequireFix64(sideViewElement, "jumpSpeed", sideViewPath),
+                    parse.OptionalFix64(
+                        sideViewElement,
+                        "verticalReach",
+                        sideViewPath,
+                        SideViewSettings.DefaultVerticalReach));
             }
         }
 

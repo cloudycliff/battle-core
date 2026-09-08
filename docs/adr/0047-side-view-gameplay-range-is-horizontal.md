@@ -1,5 +1,9 @@
 # Side-view gameplay range is horizontal
 
+> Amended by [ADR 0049](0049-side-view-vertical-reach.md): cast range and
+> Brain aggro/attack range additionally require |ΔY| ≤ `VerticalReach`.
+> Leash and owner-follow distance stay pure X as written below.
+
 In `SideView`, gameplay range uses horizontal separation only: cast range,
 Brain aggro and attack range, leash distance, and owner-follow distance compare
 `abs(from.X - to.X)`. Vertical separation does not make a target farther away

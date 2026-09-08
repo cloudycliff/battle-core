@@ -24,6 +24,9 @@ internal sealed class TopDownSpatialBackend(
     public Fix64 RangeDistanceSquared(FixVector2 from, FixVector2 to) =>
         FixVector2.DistanceSquared(from, to);
 
+    public bool IsWithinReach(FixVector2 from, FixVector2 to, Fix64 reach) =>
+        FixVector2.DistanceSquared(from, to) <= reach * reach;
+
     public FixAabb CreateAttackBox(
         FixVector2 origin,
         Facing facing,

@@ -12,7 +12,10 @@ internal sealed class SideViewSpatialBackend(
     MapConfig map,
     IReadOnlyDictionary<long, CharacterState> characters) : ISpatialBackend
 {
-    private static readonly Fix64 ContactTolerance = Fix64.FromRaw(2);
+    // Landing bisection leaves at most a couple of raw units of gap above a
+    // surface; the probe must be deeper than that and still far below anything
+    // a designer can see (16/65536 m).
+    private static readonly Fix64 SupportProbeDepth = Fix64.FromRaw(16);
     private readonly SideViewSettings _settings = map.SideView!;
 
     public SpatialMode Mode => SpatialMode.SideView;
@@ -63,6 +66,10 @@ internal sealed class SideViewSpatialBackend(
         return horizontal * horizontal;
     }
 
+    public bool IsWithinReach(FixVector2 from, FixVector2 to, Fix64 reach) =>
+        Fix64.Abs(from.Y - to.Y) <= _settings.VerticalReach &&
+        RangeDistanceSquared(from, to) <= reach * reach;
+
     public FixAabb CreateAttackBox(
         FixVector2 origin,
         Facing facing,
@@ -81,7 +88,7 @@ internal sealed class SideViewSpatialBackend(
     public void InitializeCharacter(CharacterState character)
     {
         character.VerticalVelocity = Fix64.Zero;
-        character.Grounded = IsSupported(character.Position, character.Template.Radius);
+        character.Grounded = IsSupported(character, character.Position);
     }
 
     public FixVector2 GetFrameDelta(
@@ -94,7 +101,7 @@ internal sealed class SideViewSpatialBackend(
             : Fix64.Zero;
 
         if (character.Grounded &&
-            !IsSupported(character.Position, character.Template.Radius))
+            !IsSupported(character, character.Position))
         {
             character.Grounded = false;
         }
@@ -185,7 +192,7 @@ internal sealed class SideViewSpatialBackend(
         }
 
         character.Grounded = character.VerticalVelocity <= Fix64.Zero &&
-                             IsSupported(destination, character.Template.Radius);
+                             IsSupported(character, destination);
 
         return new SpatialMoveResult(
             destination,
@@ -338,17 +345,21 @@ internal sealed class SideViewSpatialBackend(
         return Fix64.One;
     }
 
-    private bool IsSupported(FixVector2 position, Fix64 radius)
+    /// <summary>
+    /// Grounded means "a short downward probe is blocked" (ADR 0044): by the
+    /// map floor, a terrain face or corner, or another movement-blocking
+    /// character. Using the same validity test as movement keeps support and
+    /// collision geometrically consistent, so a circle resting on a corner or
+    /// on an enemy's head is grounded and can jump instead of hovering.
+    /// </summary>
+    private bool IsSupported(CharacterState character, FixVector2 position)
     {
-        var bottom = position.Y - radius;
-        if (Fix64.Abs(bottom - map.Bounds.Min.Y) <= ContactTolerance)
-        {
-            return true;
-        }
-
-        return map.Terrain.Any(blocker =>
-            Fix64.Abs(bottom - blocker.Max.Y) <= ContactTolerance &&
-            position.X + radius > blocker.Min.X &&
-            position.X - radius < blocker.Max.X);
+        var probe = new FixVector2(position.X, position.Y - SupportProbeDepth);
+        return !IsPositionValid(
+            probe,
+            character.Template.Radius,
+            character.FactionId,
+            character.Template.BlocksMovement,
+            character.Id);
     }
 }

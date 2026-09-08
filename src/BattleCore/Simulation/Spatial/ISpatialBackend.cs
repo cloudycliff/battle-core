@@ -24,10 +24,18 @@ internal interface ISpatialBackend
     bool UpdatesFacingFromMovement { get; }
 
     /// <summary>
-    /// Measures gameplay range for casts and Brains. Occupancy and hit geometry
-    /// retain their own mode-specific checks.
+    /// Measures gameplay distance for leash, owner-follow, and nearest-target
+    /// ordering. Occupancy and hit geometry retain their own checks.
     /// </summary>
     Fix64 RangeDistanceSquared(FixVector2 from, FixVector2 to);
+
+    /// <summary>
+    /// Whether <paramref name="to"/> is a reachable target for casts and Brain
+    /// aggro/attack decisions at the given reach. SideView additionally
+    /// requires the vertical gap to stay within the map's vertical reach, so
+    /// shapeless single-target skills cannot hit through floors.
+    /// </summary>
+    bool IsWithinReach(FixVector2 from, FixVector2 to, Fix64 reach);
 
     FixAabb CreateAttackBox(
         FixVector2 origin,

@@ -31,6 +31,7 @@ internal sealed class CharacterState
     public Facing Facing { get; set; } = new(0);
     public FixVector2 SpawnOrigin { get; set; }
     public bool ReturningToLeash { get; set; }
+    public bool LeashReturnBlocked { get; set; }
     public long? CurrentTargetId { get; set; }
     public MovementIntent Movement { get; set; } = MovementIntent.None;
     public LifeState LifeState { get; set; } = LifeState.Alive;

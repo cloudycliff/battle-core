@@ -123,6 +123,17 @@ public sealed class BattleConfig
                 }
             }
 
+            if (template.BaseAttributes.TryGetValue(Bindings.MaxHp, out var maxHp) && maxHp <= 0)
+            {
+                errors.Add($"Character '{template.Id}' bound MaxHP must be positive.");
+            }
+
+            if (template.BaseAttributes.TryGetValue(Bindings.MoveSpeed, out var moveSpeed) &&
+                moveSpeed < 0)
+            {
+                errors.Add($"Character '{template.Id}' bound MoveSpeed cannot be negative.");
+            }
+
             foreach (var skillId in template.SkillIds)
             {
                 if (!SkillDefinitions.ContainsKey(skillId))

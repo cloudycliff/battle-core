@@ -6,6 +6,10 @@ public readonly record struct FixVector2(Fix64 X, Fix64 Y)
 
     public Fix64 LengthSquared => (X * X) + (Y * Y);
 
+    // Components above this cannot be squared into a Q16.16 Int64 without
+    // overflow. Directions are scale-free, so huge inputs are halved first.
+    private const long SafeNormalizeMagnitude = 1L << 30;
+
     public FixVector2 NormalizeOrZero()
     {
         if (this == Zero)
@@ -13,7 +17,17 @@ public readonly record struct FixVector2(Fix64 X, Fix64 Y)
             return Zero;
         }
 
-        var length = Fix64.Sqrt(LengthSquared);
+        var x = X.RawValue;
+        var y = Y.RawValue;
+        while (x > SafeNormalizeMagnitude || x < -SafeNormalizeMagnitude ||
+               y > SafeNormalizeMagnitude || y < -SafeNormalizeMagnitude)
+        {
+            x >>= 1;
+            y >>= 1;
+        }
+
+        var scaled = new FixVector2(Fix64.FromRaw(x), Fix64.FromRaw(y));
+        var length = Fix64.Sqrt(scaled.LengthSquared);
 
         // Sub-resolution vectors (length below 1/65536 m) square to zero in
         // Q16.16; treat them as no direction instead of dividing by zero.
@@ -22,7 +36,7 @@ public readonly record struct FixVector2(Fix64 X, Fix64 Y)
             return Zero;
         }
 
-        return new FixVector2(X / length, Y / length);
+        return new FixVector2(scaled.X / length, scaled.Y / length);
     }
 
     public static Fix64 DistanceSquared(FixVector2 left, FixVector2 right) =>

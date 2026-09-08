@@ -23,8 +23,11 @@ public sealed partial class BattleInstance
                     Definition: { CanMoveWhileCasting: false },
                 };
 
+            // Slows can push the modified value below zero; a negative speed
+            // must mean "cannot move", not "walks backwards" (TopDown) or an
+            // inverted clamp range (SideView).
             var speedPerFrame = Fix64.FromRatio(
-                character.Attributes.Get(_config.Bindings.MoveSpeed),
+                System.Math.Max(0, character.Attributes.Get(_config.Bindings.MoveSpeed)),
                 LogicFramesPerSecond);
             var desiredDelta = _space.GetFrameDelta(
                 character,
@@ -46,6 +49,7 @@ public sealed partial class BattleInstance
                 if (character.Movement.Kind == MovementKind.Destination)
                 {
                     character.Movement = MovementIntent.None;
+                    character.LeashReturnBlocked |= character.ReturningToLeash;
                 }
 
                 continue;
@@ -71,6 +75,8 @@ public sealed partial class BattleInstance
                 if (reached || movement.MovementIntentBlocked)
                 {
                     character.Movement = MovementIntent.None;
+                    character.LeashReturnBlocked |=
+                        movement.MovementIntentBlocked && character.ReturningToLeash;
                 }
             }
         }

@@ -99,7 +99,8 @@
     "sideView": {
       "gravity": 30,
       "maximumFallSpeed": 20,
-      "jumpSpeed": 10
+      "jumpSpeed": 10,
+      "verticalReach": 2
     },
     "bounds": {
       "min": { "x": 0, "y": 0 },

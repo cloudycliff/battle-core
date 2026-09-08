@@ -420,8 +420,30 @@ public sealed partial class BattleInstance
         character.LifeState = LifeState.Alive;
         character.ReviveAtFrame = null;
         character.DespawnAtFrame = null;
-        character.CurrentHp = character.Attributes.Get(_config.Bindings.MaxHp);
+        character.CurrentHp = System.Math.Max(
+            1,
+            character.Attributes.Get(_config.Bindings.MaxHp));
+        _space.InitializeCharacter(character);
         events.Add(new RevivedEvent(CurrentFrame, character.Id));
+
+        // A Dead corpse does not block movement, so something may be standing
+        // on it now. Standing up inside another blocker would freeze both
+        // units forever (movement sampled from an invalid start never
+        // advances), so re-validate the landing spot like a carry drop.
+        if (IsValidLanding(character, character.Position) ||
+            !TryFindNearbyLanding(
+                character,
+                character.Position,
+                character.Template.Radius,
+                out var landing))
+        {
+            return;
+        }
+
+        var from = character.Position;
+        character.Position = landing;
+        _space.InitializeCharacter(character);
+        events.Add(new CharacterMovedEvent(CurrentFrame, character.Id, from, landing));
     }
 
     private void ResolveLife(List<BattleEvent> events)

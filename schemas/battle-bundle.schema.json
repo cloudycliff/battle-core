@@ -93,7 +93,8 @@
           "properties": {
             "gravity": { "$ref": "#/definitions/fix64" },
             "maximumFallSpeed": { "$ref": "#/definitions/fix64" },
-            "jumpSpeed": { "$ref": "#/definitions/fix64" }
+            "jumpSpeed": { "$ref": "#/definitions/fix64" },
+            "verticalReach": { "$ref": "#/definitions/fix64" }
           }
         },
         "terrain": { "type": "array", "items": { "$ref": "#/definitions/aabb" } },

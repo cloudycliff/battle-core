@@ -4,9 +4,11 @@
 
 宿主 / 外围 agent 入口：[host-handoff.md](host-handoff.md)。怎么 Tick：[user-guide.md](user-guide.md)。测试表示当前代码实际行为；若测试与冻结规则冲突，视为实现或文档漂移，不自动改变规则。
 
-最后更新：2026-09-07。
+最后更新：2026-09-08。
 
 > **2026-08-28 审查与修复**：两轮全面审查见 [review-2026-08-28.md](review-2026-08-28.md) 与 [review-2026-08-28-round2.md](review-2026-08-28-round2.md)。第一批 8 项已修（弹体扫掠、NormalizeOrZero 除零、属性缺失防崩、眩晕取消时间轴、PreventRevive 挡 Lives、非阻挡单位撞地形、Carry 落点复验、确定性黄金回归测试），其余问题按 round2 文档「合并修复顺序」排队。
+>
+> **2026-09-08 第三轮审查与修复**：见 [review-2026-09-08.md](review-2026-09-08.md)（含逐项修复状态表）。已修：复活落点复验、拾取属性防崩、命令坐标守门与超大向量归一化、MoveSpeed/MaxHP 下界、横版竖直可及带（[ADR 0049](adr/0049-side-view-vertical-reach.md)）、横版接地探针（[ADR 0050](adr/0050-side-view-grounding-is-a-blocked-probe.md)）、leash 回程被挡视为到达（[ADR 0051](adr/0051-leash-return-blocked-counts-as-arrived.md)）。
 >
 > **2026-09-07**：横版不另写战斗核。共用推演核、分叉空间后端已拍板（[ADR 0043](adr/0043-shared-kernel-split-space.md)），工作说明 [space-modes.md](space-modes.md)。V1 仍只编码俯视。
 > 空间后端基础已落地：`TopDownSpatialBackend` 保持原俯视规则；
@@ -15,7 +17,7 @@
 > 及显式横版参数（[ADR 0044](adr/0044-side-view-gravity-grounding-jump.md)）。
 > Forced 技能位移在横版为水平推挤加弹道竖直冲量（[ADR 0045](adr/0045-side-view-forced-displacement.md)）。
 > 横版朝向只认左右（[ADR 0046](adr/0046-side-view-facing-left-right.md)）。
-> 横版施法射程和 Brain 距离只看 X（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）。
+> 横版施法射程和 Brain 距离只看 X（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)），施法/仇恨/攻击另需目标在 `VerticalReach` 竖直带内（[ADR 0049](adr/0049-side-view-vertical-reach.md)）。
 > 近战可选 `BoxAtCaster` 朝向攻击盒（[ADR 0048](adr/0048-axis-aligned-attack-box.md)）。
 > 样例：`samples/arena.bundle.json`（俯视）、`samples/sideview.bundle.json`（横版推图）。
 

@@ -128,13 +128,19 @@ public sealed partial class BattleInstance
 
         if (!actor.ReturningToLeash)
         {
+            actor.LeashReturnBlocked = false;
             return false;
         }
 
+        // Arrived, or the straight-line return was stopped by a blocker (an
+        // enemy standing on the origin, most commonly). Either way the return
+        // is over; otherwise a body parked on the spawn point would keep this
+        // Brain passive forever. The origin itself is not moved.
         var arrival = actor.Template.Radius;
-        if (distanceSquared <= arrival * arrival)
+        if (distanceSquared <= arrival * arrival || actor.LeashReturnBlocked)
         {
             actor.ReturningToLeash = false;
+            actor.LeashReturnBlocked = false;
             StopIfMoving(actor);
             return false;
         }
@@ -304,7 +310,8 @@ public sealed partial class BattleInstance
             }
 
             var distanceSquared = _space.RangeDistanceSquared(actor.Position, candidate.Position);
-            if (distanceSquared > reachSquared)
+            if (distanceSquared > reachSquared ||
+                !_space.IsWithinReach(actor.Position, candidate.Position, reach))
             {
                 continue;
             }
@@ -381,6 +388,6 @@ public sealed partial class BattleInstance
         Fix64 range)
     {
         var reach = range + target.Template.Radius;
-        return _space.RangeDistanceSquared(actor.Position, target.Position) <= reach * reach;
+        return _space.IsWithinReach(actor.Position, target.Position, reach);
     }
 }

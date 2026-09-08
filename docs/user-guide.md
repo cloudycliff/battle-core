@@ -325,7 +325,7 @@ Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表�
 | 种类 | 行为 |
 |------|------|
 | `Idle` | 不发命令 |
-| `ChaseAttack` | 仇恨半径内锁最近敌对；有就绪且在射程内的进攻技能就放，否则走近。可配 `LeashRadius`：超出则清目标并回出生点，返回期间不选敌、不施法，不回血、不驱散 |
+| `ChaseAttack` | 仇恨半径内锁最近敌对；有就绪且在射程内的进攻技能就放，否则走近。可配 `LeashRadius`：超出则清目标并回出生点，返回期间不选敌、不施法，不回血、不驱散；回程被挡住（例如敌人站在出生点上）视为已到达，恢复选敌（[ADR 0051](adr/0051-leash-return-blocked-counts-as-arrived.md)） |
 | `HoldPosition` | 同样选敌和施法，不追；若被位移超出 leash 则回家 |
 | `FollowOwner` | 靠近 `OwnerId`；自己或主人已有敌对目标、或仇恨内有敌人时切到 ChaseAttack（不使用出生点 leash） |
 
@@ -342,8 +342,13 @@ MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 `CharacterSnapshot.Grounded` 和 `VerticalVelocity` 可驱动落地/腾空表现。
 横版击退与冲锋见 [ADR 0045](adr/0045-side-view-forced-displacement.md)：水平当帧推挤，竖直为弹道冲量。
 横版朝向见 [ADR 0046](adr/0046-side-view-facing-left-right.md)：逻辑上只有左右；走动会改朝向，俯视不会。
-横版施法射程与 Brain 的仇恨、攻击、leash、跟随距离只比较 X；
-圆/环/扇命中、占位和弹体碰撞仍是 2D（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）。
+横版施法射程与 Brain 的仇恨、攻击距离只比较 X，但目标还须在
+`SideViewSettings.VerticalReach`（JSON `verticalReach`，默认 2 米）的竖直带内，
+否则视为不可及——没有形状的单体技能不会隔着楼板命中，Brain 也不会站在平台下空放
+（[ADR 0049](adr/0049-side-view-vertical-reach.md)）。leash 与跟随距离仍只比较 X。
+圆/环/扇/盒命中、占位和弹体碰撞仍是 2D（[ADR 0047](adr/0047-side-view-gameplay-range-is-horizontal.md)）。
+接地 = 向下极短探针被地板、地形（含角）或阻挡单位挡住（[ADR 0050](adr/0050-side-view-grounding-is-a-blocked-probe.md)），
+所以站在敌人头上也算接地、能起跳；对方走开就掉下来。
 推图样例 [samples/sideview.bundle.json](../samples/sideview.bundle.json) 用地图 `Bounds.Min.Y` 当地板、空 `terrain`，出生点 Y 为 `Min.Y + radius`。
 基础横版仍使用圆形角色占用与实心 AABB，不含单向台、斜坡和移动平台。
 
@@ -370,7 +375,7 @@ MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 
 ### 命令（均带逻辑帧戳）
 
-移动：方向 / `MoveTo` / 停止。`MoveTo` 直线走，无寻路；被挡无法接近终点则取消。横版另有 `JumpCommand`（须接地）。  
+移动：方向 / `MoveTo` / 停止。`MoveTo` 直线走，无寻路；被挡无法接近终点则取消；终点必须在地图边界内，否则拒绝（技能 `TargetPoint` 同理）。方向向量任意长度都安全。横版另有 `JumpCommand`（须接地）。  
 朝向：`SetFacing`，或带方向/目标点/显式目标的 `CastSkill` 起手成功时自动转向（取消不回滚）。受伤不转向。全圆 1024 档，step 0 朝 +X。横版只使用 0 / 512，走动会改朝向。  
 目标：`SetTarget` 软锁；技能是否打它由选敌器决定。  
 战斗：`CastSkill`、`DealDamage`、`Heal`、`GrantShield`、`GrantResource`、Buff 添加/移除/驱散、`Revive`（允许复活且未被禁止复活的友方 Dead）。

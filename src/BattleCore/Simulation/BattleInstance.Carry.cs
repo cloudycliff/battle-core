@@ -224,22 +224,44 @@ public sealed partial class BattleInstance
         }
 
         var step = Fix64.Max(carried.Template.Radius, carrier.Template.Radius);
+        if (TryFindNearbyLanding(carried, carrier.Position, step, out var landing))
+        {
+            carried.Position = landing;
+            return;
+        }
+
+        // Degenerate map with no nearby opening: keep historical behavior.
+        carried.Position = carrier.Position;
+    }
+
+    /// <summary>
+    /// Deterministic ring search around <paramref name="anchor"/> for a spot
+    /// where <paramref name="character"/> may legally stand. Shared by carry
+    /// drops and revives: both can end with a body overlapping something that
+    /// walked over it while it was not blocking movement.
+    /// </summary>
+    private bool TryFindNearbyLanding(
+        CharacterState character,
+        FixVector2 anchor,
+        Fix64 step,
+        out FixVector2 landing)
+    {
         for (var ring = 1; ring <= 8; ring++)
         {
             var distance = step * Fix64.FromInt(ring);
             foreach (var direction in DropSearchDirections)
             {
-                var candidate = carrier.Position + (direction * distance);
-                if (IsValidLanding(carried, candidate))
+                var candidate = anchor + (direction * distance);
+                if (IsValidLanding(character, candidate))
                 {
-                    carried.Position = candidate;
-                    return;
+                    landing = candidate;
+                    return true;
                 }
             }
         }
 
-        // Degenerate map with no nearby opening: keep historical behavior.
-        carried.Position = carrier.Position;
+        landing = anchor;
+        return false;
     }
 
     private bool IsValidLanding(CharacterState carried, FixVector2 position) =>

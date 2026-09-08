@@ -29,8 +29,8 @@ _Avoid_: 网格移动, Tile 占位为主的空间模型, 把俯视 Y 假装成�
 _Avoid_: 同场混用两种空间, 宿主用向下 MoveDirection 冒充重力, 为横版复制一套伤害/Buff 核, 把格斗帧对战塞进本核
 
 **Space Service**:
-核内空间后端接口：合法落点、本帧位移、扫掠命中、击退如何落地、朝向如何从瞄准得出、gameplay range 如何度量。技能与 Brain 只依赖该接口，不直接解释 Y 的含义。横版施法射程与 Brain 仇恨/攻击/leash/跟随只看 X；占位、碰撞和技能命中形状仍按 2D 处理。俯视行为必须保持不变。
-_Avoid_: 在技能/Brain 里散落 if (横版), 未抽接口就改碰撞语义
+核内空间后端接口：合法落点、本帧位移、扫掠命中、击退如何落地、朝向如何从瞄准得出、gameplay range 如何度量。技能与 Brain 只依赖该接口，不直接解释 Y 的含义。横版施法射程与 Brain 仇恨/攻击只看 X，但目标须在 `VerticalReach` 竖直带内（默认 2 米）；leash/跟随距离只看 X。占位、碰撞和技能命中形状仍按 2D 处理。横版接地 = 向下探针被地板/地形/阻挡单位挡住。俯视行为必须保持不变。
+_Avoid_: 在技能/Brain 里散落 if (横版), 未抽接口就改碰撞语义, 无形状的单体技能凭 X 距离隔楼命中
 
 **Spatial Fixed-Point**:
 位置、速度、距离、角度等空间量使用定点数表示与运算，以保证跨平台一致。对外用独立定点类型（如 Fix64），内部为 Q16.16；1 逻辑单位 = 1 米。角度用整数档（V1 全圆 1024）+ 查找表。
@@ -94,8 +94,8 @@ _Avoid_: 直接改内部状态来“遥控”单位
 _Avoid_: 在代码里写死唯一属性集
 
 **Combat Binding**:
-Battle Config 中把管道/移动槽位映射到属性 ID 的对照表。必填：MaxHP、PhysicalDef、MagicalDef、CritRate、CritDamage、DamageDealt、DamageTaken、MoveSpeed。名字可自定，但必须指向已声明属性；MoveSpeed 单位为米/秒。CurrentHP、Shield、Lives 不是 Attribute。
-_Avoid_: 在代码里写死属性英文名, 无绑定让管道猜名字
+Battle Config 中把管道/移动槽位映射到属性 ID 的对照表。必填：MaxHP、PhysicalDef、MagicalDef、CritRate、CritDamage、DamageDealt、DamageTaken、MoveSpeed。名字可自定，但必须指向已声明属性；MoveSpeed 单位为米/秒。模板基值 MaxHP 必须为正、MoveSpeed 不得为负；运行时被修饰成负的 MoveSpeed 按 0（不动）处理，复活时 CurrentHP 至少为 1。CurrentHP、Shield、Lives 不是 Attribute。
+_Avoid_: 在代码里写死属性英文名, 无绑定让管道猜名字, 负速度倒着走
 
 **Modifier**:
 对 Attribute 的加值或乘区修正，来源包括 Buff、装备、技能被动等。
@@ -140,8 +140,8 @@ _Avoid_: 仅用 Buff 塞 carrierId 冒充携带, 把整段抓投写成单一特�
 ## Boundaries
 
 **Command Queue**:
-外部或 Brain 提交的带逻辑帧戳的 Command；`Tick()` 只消费属于当前逻辑帧的命令。
-_Avoid_: 命令在提交瞬间直接改世界
+外部或 Brain 提交的带逻辑帧戳的 Command；`Tick()` 只消费属于当前逻辑帧的命令。命令携带的坐标（出生点、MoveTo 终点、技能目标点）必须在地图边界内，否则拒绝；方向向量任意大小均安全归一化。宿主输入不得让 `Tick()` 抛异常。
+_Avoid_: 命令在提交瞬间直接改世界, 图外坐标进入定点平方运算
 
 **Battle Event**:
 Tick 产生的增量事实（移动、技能、伤害、Buff、携带等），供表现层与外部系统消费。
@@ -198,8 +198,8 @@ HP 降至 0 或以下时：若 Lives > 0，则消耗 1 次并进入复活倒计�
 _Avoid_: 死亡当帧立即从世界抹除且无尸体窗口, 用全局尸体展示时间决定复活资格
 
 **Revive**:
-把 Dead 且模板允许复活的对象拉回战斗的机制。来源包括：消耗一次 Lives 后倒计时自动站起，以及技能效果复活友方（如主角复活宠物）。复活资格与全局尸体展示时间无关；`PreventReviveBuffEffect` 会跨死亡保留并在有效期间阻止复活。普通伤害/控制选敌仍跳过 Dead，复活倒计时中也不是有效目标。
-_Avoid_: 复活只能靠外部换一个新 entityId 的 Spawn
+把 Dead 且模板允许复活的对象拉回战斗的机制。来源包括：消耗一次 Lives 后倒计时自动站起，以及技能效果复活友方（如主角复活宠物）。复活资格与全局尸体展示时间无关；`PreventReviveBuffEffect` 会跨死亡保留并在有效期间阻止复活。普通伤害/控制选敌仍跳过 Dead，复活倒计时中也不是有效目标。尸体不阻挡移动，站起时复验落点（同 Carry 放下的环形搜索），避免与踩在尸体上的单位互锁。
+_Avoid_: 复活只能靠外部换一个新 entityId 的 Spawn, 站起后与他人重叠且双方都动不了
 
 **Lives**:
 Character 上的复活次数资源；可被即时 Pickup 或技能改变。致死时若 Lives > 0 则消耗并进入复活倒计时。
