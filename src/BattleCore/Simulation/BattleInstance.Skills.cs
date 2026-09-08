@@ -292,12 +292,26 @@ public sealed partial class BattleInstance
             .Where(effect => effect.Target.Kind == SkillTargetKind.ExplicitTarget)
             .Select(effect => effect.Target)
             .ToArray();
+        // Range/aim-only skills (no ExplicitTarget effect) just need a live,
+        // selectable target. Otherwise the target must satisfy the relation
+        // of at least one explicit effect at cast time so an ally-only heal
+        // cannot be started on an enemy and burn its cost and cooldown.
+        if (explicitTargets.Length == 0)
+        {
+            if (!target.IsSelectable)
+            {
+                Reject(command, events, "Skill requires an available explicit target.");
+                return false;
+            }
+
+            return true;
+        }
+
         var corpsesOnly = explicitTargets.All(item => item.CorpsesOnly);
         var matchesRelation = explicitTargets.Any(item =>
             IsRelationMatch(caster, target, item.Relation));
-        var valid = corpsesOnly
-            ? target.IsReviveTarget && matchesRelation
-            : target.IsSelectable;
+        var valid = matchesRelation &&
+                    (corpsesOnly ? target.IsReviveTarget : target.IsSelectable);
         if (!valid)
         {
             Reject(
@@ -305,7 +319,7 @@ public sealed partial class BattleInstance
                 events,
                 corpsesOnly
                     ? "Skill requires an eligible dead ally."
-                    : "Skill requires an available explicit target.");
+                    : "Skill requires an explicit target matching its relation.");
             return false;
         }
 

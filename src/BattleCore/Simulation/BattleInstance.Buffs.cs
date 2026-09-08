@@ -34,6 +34,15 @@ public sealed partial class BattleInstance
             return;
         }
 
+        // Damageable=false means "takes neither damage nor control" (CONTEXT
+        // Combat Flag); the damage path already refuses, so must control.
+        if (!target.Template.Damageable &&
+            definition.Effects.Any(effect => effect is ControlBuffEffect))
+        {
+            Reject(command, events, "Target cannot receive control effects.");
+            return;
+        }
+
         var immunityTags = target.Buffs
             .SelectMany(buff => buff.Definition.ImmunityTags)
             .ToHashSet(StringComparer.Ordinal);
@@ -221,14 +230,11 @@ public sealed partial class BattleInstance
                          .OrderBy(buff => buff.InstanceId)
                          .ToArray())
             {
-                if (instance.ExpiryFrame <= CurrentFrame)
-                {
-                    RemoveBuffInstance(target, instance, events);
-                    continue;
-                }
-
+                // A tick due on the expiry frame still fires, then the buff
+                // goes: Duration == Interval means exactly one tick, not zero.
                 for (var effectIndex = 0;
-                     effectIndex < instance.Definition.Effects.Count;
+                     effectIndex < instance.Definition.Effects.Count &&
+                     target.Buffs.Contains(instance);
                      effectIndex++)
                 {
                     if (instance.Definition.Effects[effectIndex] is not
@@ -245,6 +251,11 @@ public sealed partial class BattleInstance
                         events);
                     instance.NextPeriodicFrames[effectIndex] =
                         CurrentFrame + periodic.IntervalFrames;
+                }
+
+                if (instance.ExpiryFrame <= CurrentFrame && target.Buffs.Contains(instance))
+                {
+                    RemoveBuffInstance(target, instance, events);
                 }
             }
         }
@@ -332,6 +343,15 @@ public sealed partial class BattleInstance
         }
 
         events.Add(new ControlChangedEvent(CurrentFrame, target.Id));
+
+        // Losing the ability to move drops the current intent, mirroring how
+        // a stun cancels the skill timeline: control ending must not make the
+        // unit silently resume a walk nobody re-issued.
+        if (!target.CanMove && target.Movement.Kind != MovementKind.None)
+        {
+            target.Movement = MovementIntent.None;
+        }
+
         if (target.HasControl(ControlType.Stun) &&
             target.ActiveSkill is { } cast)
         {

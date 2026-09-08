@@ -165,4 +165,23 @@ Lives > 0 致死进入 `Reviving` 倒计时、到点 `StandUp`，全程不检查
 | N4 | `RelocateIfInvalid` 落点复验：原位 → 载体位 → 以 max(双方半径) 为步长的 8 方向确定性环形搜索（8 环），全失败才退回历史行为 | `CarryTests.DropAgainstWall_RelocatesOversizedCarriedUnitToValidSpot` |
 | N7 | 复核后降级为非缺陷（见上），未改动角色位移采样 | —— |
 
-未修项（N5、N6、N9–N20 及第一轮 #5–#18 其余项）按上方顺序排队。
+## 修复记录（2026-09-08，全量 187 用例绿）
+
+回归测试：`tests/BattleCore.Tests/Round2QueueRegressionTests.cs`。
+
+| 项 | 修复方式 |
+|---|---|
+| 一轮#6 | 弹体发射时快照来源方并派生独立 RNG（stream 5），命中按弹体阵营判 Relation；施法者死亡/尸体回收后照常飞行。[ADR 0052](adr/0052-projectiles-snapshot-source-and-expiry-frame-rule.md) |
+| 一轮#7 | `HasValidExplicitTarget`：含 ExplicitTarget 效果时目标必须匹配至少一个效果的 Relation；无 ExplicitTarget 效果时只要求可选中（修掉空集合 `All()` 陷阱） |
+| 一轮#8 | 基数为正且 `hit < MinimumDamage` 即抬到 `MinimumDamage`；去掉重复的基数计算 |
+| N6 | `ApplyBuff` 对 `Damageable = false` 的目标拒绝含 `ControlBuffEffect` 的 Buff |
+| N9 | 弹体到期改为到期帧开头销毁，`LifetimeFrames = N` 恰好 N 帧位移 |
+| N10 | `HandleControlChange` 在失去移动能力时清 `Movement`；`MoveDirection` / `MoveTo` 在 `!CanMove` 时拒绝（与施法对称） |
+| N11 | `Kill` 逐层发 `ShieldChangeEvent`（负值、余量递减）并在清软锁时发 `TargetChangedEvent(null)` |
+| N12 | `CombatMath` 全部 `checked`；暴击乘区亦 `checked` |
+| N13 | 拍板为规则：自杀致死不触发自身 Kill 触发器，写入 [ADR 0029](adr/0029-buff-combat-triggers.md) 与 CONTEXT |
+| N14 | 见 review-2026-09-08 第 4 项：模板 MaxHP > 0、MoveSpeed ≥ 0 校验 |
+| N15 | `HitShieldEffect` 构造期校验 amount > 0、duration ≥ 0 |
+| N16 | `JsonParse.RequireInt32 / OptionalInt32` 超范围报 `ConfigurationException`（"must fit in a 32-bit integer"） |
+
+未修项：N5（同帧效果顺序，需拍板）、N8（被携带者是否阻挡，需拍板）、N17–N20（schema/重复键/API/ADR 0008 文档）及第一轮 #5、#9、#12–#18。

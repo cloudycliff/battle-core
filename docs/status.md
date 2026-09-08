@@ -8,7 +8,7 @@
 
 > **2026-08-28 审查与修复**：两轮全面审查见 [review-2026-08-28.md](review-2026-08-28.md) 与 [review-2026-08-28-round2.md](review-2026-08-28-round2.md)。第一批 8 项已修（弹体扫掠、NormalizeOrZero 除零、属性缺失防崩、眩晕取消时间轴、PreventRevive 挡 Lives、非阻挡单位撞地形、Carry 落点复验、确定性黄金回归测试），其余问题按 round2 文档「合并修复顺序」排队。
 >
-> **2026-09-08 第三轮审查与修复**：见 [review-2026-09-08.md](review-2026-09-08.md)（含逐项修复状态表）。已修：复活落点复验、拾取属性防崩、命令坐标守门与超大向量归一化、MoveSpeed/MaxHP 下界、横版竖直可及带（[ADR 0049](adr/0049-side-view-vertical-reach.md)）、横版接地探针（[ADR 0050](adr/0050-side-view-grounding-is-a-blocked-probe.md)）、leash 回程被挡视为到达（[ADR 0051](adr/0051-leash-return-blocked-counts-as-arrived.md)）。
+> **2026-09-08 第三轮审查与修复**：见 [review-2026-09-08.md](review-2026-09-08.md)（含逐项修复状态表）。已修：复活落点复验、拾取属性防崩、命令坐标守门与超大向量归一化、MoveSpeed/MaxHP 下界、横版竖直可及带（[ADR 0049](adr/0049-side-view-vertical-reach.md)）、横版接地探针（[ADR 0050](adr/0050-side-view-grounding-is-a-blocked-probe.md)）、leash 回程被挡视为到达（[ADR 0051](adr/0051-leash-return-blocked-counts-as-arrived.md)）。同日清掉旧 round2 队列的机械项（一轮 #6/#7/#8、N6、N9–N13、N15、N16；弹体来源快照与到期帧口径见 [ADR 0052](adr/0052-projectiles-snapshot-source-and-expiry-frame-rule.md)），记录在 round2 文档末尾。**待拍板**：Reviving 是否阻挡移动、横版竖直冲量封顶、N5 同帧效果顺序、N8 被携带者阻挡。
 >
 > **2026-09-07**：横版不另写战斗核。共用推演核、分叉空间后端已拍板（[ADR 0043](adr/0043-shared-kernel-split-space.md)），工作说明 [space-modes.md](space-modes.md)。V1 仍只编码俯视。
 > 空间后端基础已落地：`TopDownSpatialBackend` 保持原俯视规则；
@@ -100,7 +100,15 @@
 
 ## 待讨论
 
-无。新缺口另开讨论并改本页。
+审查中登记、需要规则拍板而非修码的项（详见 [review-2026-09-08.md](review-2026-09-08.md) 与 [review-2026-08-28-round2.md](review-2026-08-28-round2.md)）：
+
+- Reviving（Lives 倒计时）单位是否阻挡敌对移动（当前是不可选中、不受伤的硬墙）。
+- 横版竖直冲量是否封顶 / 同帧多次击飞如何叠加（ADR 0045 未写）。
+- N5：同一效果列表中伤害排队到收尾、Buff/护盾立即生效的顺序是否统一。
+- N8：被携带者是否阻挡敌对移动。
+- 拾取的属性修饰是否走 ModifierSource、`PickupGrantLivesEffect` 是否发事件。
+
+新缺口另开讨论并改本页。
 
 ---
 

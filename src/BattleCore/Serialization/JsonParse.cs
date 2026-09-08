@@ -105,7 +105,7 @@ internal sealed class JsonParse
     }
 
     public int RequireInt32(JsonElement parent, string name, string path) =>
-        checked((int)RequireInt64(parent, name, path));
+        ToInt32(RequireInt64(parent, name, path), $"{path}.{name}");
 
     public long RequireInt64(JsonElement parent, string name, string path)
     {
@@ -120,7 +120,18 @@ internal sealed class JsonParse
             return fallback;
         }
 
-        return checked((int)ReadInt64(value, $"{path}.{name}"));
+        return ToInt32(ReadInt64(value, $"{path}.{name}"), $"{path}.{name}");
+    }
+
+    private int ToInt32(long value, string path)
+    {
+        if (value is < int.MinValue or > int.MaxValue)
+        {
+            Fail($"{path} must fit in a 32-bit integer.");
+            return 0;
+        }
+
+        return (int)value;
     }
 
     public long OptionalInt64(JsonElement parent, string name, string path, long fallback)

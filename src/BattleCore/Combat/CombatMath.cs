@@ -2,6 +2,11 @@ using BattleCore.Attributes;
 
 namespace BattleCore.Combat;
 
+/// <summary>
+/// Damage pipeline arithmetic. Every step is <c>checked</c>: a configuration
+/// that overflows Int64 must fail loudly, never wrap into a silently wrong
+/// number (ADR 0001 / 0006).
+/// </summary>
 public static class CombatMath
 {
     public static long ComputeBase(long flat, long attributeValue, long ratio) =>
@@ -14,15 +19,15 @@ public static class CombatMath
             return hit;
         }
 
-        var mitigation = defense * AttributeSet.RatioScale / (defense + defenseK);
+        var mitigation = checked(defense * AttributeSet.RatioScale / (defense + defenseK));
         if (mitigation > maximumMitigation)
         {
             mitigation = maximumMitigation;
         }
 
-        return hit * (AttributeSet.RatioScale - mitigation) / AttributeSet.RatioScale;
+        return checked(hit * (AttributeSet.RatioScale - mitigation) / AttributeSet.RatioScale);
     }
 
     public static long ScaleByRate(long value, long rate) =>
-        value * (AttributeSet.RatioScale + rate) / AttributeSet.RatioScale;
+        checked(value * (AttributeSet.RatioScale + rate) / AttributeSet.RatioScale);
 }

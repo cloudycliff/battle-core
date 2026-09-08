@@ -316,7 +316,7 @@ var battle = bundle.CreateBattle();
 
 ### 5.4 Buff
 
-Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表。已实现：属性修饰、周期伤/治/资源、控制（晕、沉默、定身、缴械）、免疫 Tag、替换 Tag、按 Tag 驱散、`ImmuneToDamageBuffEffect`（跳过伤害管道，治疗与控制仍生效）、`UntargetableBuffEffect`（普通选敌与弹/区域跳过；尸体复活选敌不变）、战斗触发（造成伤害 / 受到伤害 / 击杀 / 起手施法）。触发动作是治疗、护盾、资源、上 Buff，不会再开技能时间轴，也不会嵌套再触发；伤害先结算并出 `DamageEvent`，再跑双方触发，然后才判定死亡，所以同帧治疗可以救命。护盾是独立 ShieldLayer，主要由 `GrantShield` / 技能护盾效果创建；移除来源 Buff 不自动拆盾。
+Tag + 叠层（`Unique` / `Refresh` / `Stack` / `Independent`）+ 效果列表。到期帧上恰好到期的周期效果先结算再移除，`Duration == Interval` 的 DoT 恰好一跳（区域同口径，[ADR 0052](adr/0052-projectiles-snapshot-source-and-expiry-frame-rule.md)）。`Damageable = false` 的模板拒绝含控制的 Buff；眩晕/定身会清空当前移动意图并拒绝期间的移动命令，控制结束不会自动续走。已实现：属性修饰、周期伤/治/资源、控制（晕、沉默、定身、缴械）、免疫 Tag、替换 Tag、按 Tag 驱散、`ImmuneToDamageBuffEffect`（跳过伤害管道，治疗与控制仍生效）、`UntargetableBuffEffect`（普通选敌与弹/区域跳过；尸体复活选敌不变）、战斗触发（造成伤害 / 受到伤害 / 击杀 / 起手施法）。触发动作是治疗、护盾、资源、上 Buff，不会再开技能时间轴，也不会嵌套再触发；伤害先结算并出 `DamageEvent`，再跑双方触发，然后才判定死亡，所以同帧治疗可以救命。护盾是独立 ShieldLayer，主要由 `GrantShield` / 技能护盾效果创建；移除来源 Buff 不自动拆盾。
 
 ### 5.5 Brain
 
@@ -400,7 +400,7 @@ MaximumFallSpeed, JumpSpeed)`；单位 X 方向读取 `MoveDirection`，Y 分量
 
 ## 8. 现在能做什么 / 先别指望什么
 
-**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋/击退/拉人）、直线穿透弹（可撞地形）、区域效果（来源快照与独立 RNG）、Buff（含战斗触发、伤害免疫、不可选中）与控制、四种 Brain（含 leash）、技能召唤 Character、Carry、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源、技能资源池、按帧刷怪表、JSON 样例加载器、`maxFrames` 超时。可选 `SideView`（重力、跳跃、左右朝向；样例 `samples/sideview.bundle.json`）。
+**已实现（可接入宿主）：** 定点空间与地形阻挡、命令事件查询、移动与软锁、属性修饰、完整伤害/治疗/护盾/暴击/防御管道、Lives 与尸体复活命令、技能时间轴（圆/扇/环/冲锋/击退/拉人）、直线穿透弹（可撞地形；发射时快照来源，施法者死亡后照常飞行）、区域效果（来源快照与独立 RNG）、Buff（含战斗触发、伤害免疫、不可选中）与控制、四种 Brain（含 leash）、技能召唤 Character、Carry、即时/局外拾取、技能复活友方尸体、具名 Modifier 来源、技能资源池、按帧刷怪表、JSON 样例加载器、`maxFrames` 超时。可选 `SideView`（重力、跳跃、左右朝向；样例 `samples/sideview.bundle.json`）。
 
 **V1 写了但还没做：** 战斗级 RNG 用于随机组成（刷怪当前是全确定表）。进度总表见 [status.md](status.md)。
 

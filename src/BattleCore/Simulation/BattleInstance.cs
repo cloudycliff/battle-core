@@ -15,6 +15,7 @@ public sealed partial class BattleInstance
     private const ulong AiStream = 2;
     private const ulong AreaStream = 3;
     private const ulong BuffStream = 4;
+    private const ulong ProjectileStream = 5;
 
     private readonly BattleConfig _config;
     private readonly MapConfig _map;

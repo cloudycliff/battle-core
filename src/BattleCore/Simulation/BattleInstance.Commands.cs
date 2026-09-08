@@ -39,6 +39,12 @@ public sealed partial class BattleInstance
             case MoveDirectionCommand move:
                 WithLiving(move.CharacterId, command, events, character =>
                 {
+                    if (!character.CanMove)
+                    {
+                        Reject(command, events, "Character cannot move while controlled or carried.");
+                        return;
+                    }
+
                     var direction = _space.NormalizeMoveDirection(move.Direction);
                     character.Movement = MovementIntent.Direction(direction);
                     if (_space.UpdatesFacingFromMovement)
@@ -50,6 +56,12 @@ public sealed partial class BattleInstance
             case MoveToCommand moveTo:
                 WithLiving(moveTo.CharacterId, command, events, character =>
                 {
+                    if (!character.CanMove)
+                    {
+                        Reject(command, events, "Character cannot move while controlled or carried.");
+                        return;
+                    }
+
                     if (!IsInsideMap(moveTo.Destination))
                     {
                         Reject(command, events, "MoveTo destination must lie inside map bounds.");

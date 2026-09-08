@@ -33,9 +33,10 @@ public sealed partial class BattleInstance
         }
 
         var speedPerFrame = definition.Speed / Fix64.FromInt(LogicFramesPerSecond);
+        var projectileId = _nextEntityId++;
         var projectile = new ProjectileState
         {
-            Id = _nextEntityId++,
+            Id = projectileId,
             Definition = definition,
             SourceId = caster.Id,
             FactionId = caster.FactionId,
@@ -43,6 +44,9 @@ public sealed partial class BattleInstance
             Velocity = direction * speedPerFrame,
             ExpiryFrame = CurrentFrame + definition.LifetimeFrames,
             RemainingHits = definition.PierceCount + 1,
+            CombatSnapshot = CaptureCombatSnapshot(
+                caster,
+                DeterministicRng.Derive(Seed, projectileId, ProjectileStream)),
         };
         _projectiles.Add(projectile.Id, projectile);
         events.Add(new SkillHitEvent(
@@ -152,6 +156,15 @@ public sealed partial class BattleInstance
     {
         foreach (var projectile in _projectiles.Values.ToArray())
         {
+            // Same frame semantics as AreaEffect and shields: gone at the
+            // start of the expiry frame, so LifetimeFrames == N means exactly
+            // N frames of travel and collision.
+            if (CurrentFrame >= projectile.ExpiryFrame)
+            {
+                DespawnProjectile(projectile, events);
+                continue;
+            }
+
             if (TryDespawnProjectileOnTerrain(projectile, events))
             {
                 continue;
@@ -191,8 +204,7 @@ public sealed partial class BattleInstance
             }
 
             if (blockedByTerrain ||
-                !_map.Bounds.ContainsCircle(projectile.Position, projectile.Definition.Radius) ||
-                CurrentFrame >= projectile.ExpiryFrame)
+                !_map.Bounds.ContainsCircle(projectile.Position, projectile.Definition.Radius))
             {
                 DespawnProjectile(projectile, events);
             }
@@ -215,18 +227,16 @@ public sealed partial class BattleInstance
 
     private bool TryCollideProjectile(ProjectileState projectile, List<BattleEvent> events)
     {
-        if (!_characters.TryGetValue(projectile.SourceId, out var source))
-        {
-            DespawnProjectile(projectile, events);
-            return true;
-        }
-
         foreach (var target in _characters.Values)
         {
             if (target.Id == projectile.SourceId ||
                 projectile.HitCharacterIds.Contains(target.Id) ||
                 !target.IsSelectable ||
-                !IsRelationMatch(source, target, projectile.Definition.Relation))
+                !IsRelationMatch(
+                    projectile.SourceId,
+                    projectile.FactionId,
+                    target,
+                    projectile.Definition.Relation))
             {
                 continue;
             }
@@ -244,7 +254,12 @@ public sealed partial class BattleInstance
                 CurrentFrame,
                 projectile.Id,
                 target.Id));
-            ApplyHitEffects(source.Id, target, projectile.Definition.HitEffects, events);
+            ApplyHitEffects(
+                projectile.SourceId,
+                target,
+                projectile.Definition.HitEffects,
+                events,
+                projectile.CombatSnapshot);
 
             if (projectile.RemainingHits <= 0)
             {
@@ -266,12 +281,6 @@ public sealed partial class BattleInstance
         FixVector2 from,
         List<BattleEvent> events)
     {
-        if (!_characters.TryGetValue(projectile.SourceId, out var source))
-        {
-            DespawnProjectile(projectile, events);
-            return true;
-        }
-
         var to = projectile.Position;
         var delta = to - from;
         var hits = new List<(Fix64 Parameter, CharacterState Target)>();
@@ -280,7 +289,11 @@ public sealed partial class BattleInstance
             if (target.Id == projectile.SourceId ||
                 projectile.HitCharacterIds.Contains(target.Id) ||
                 !target.IsSelectable ||
-                !IsRelationMatch(source, target, projectile.Definition.Relation))
+                !IsRelationMatch(
+                    projectile.SourceId,
+                    projectile.FactionId,
+                    target,
+                    projectile.Definition.Relation))
             {
                 continue;
             }
@@ -306,7 +319,12 @@ public sealed partial class BattleInstance
                 CurrentFrame,
                 projectile.Id,
                 target.Id));
-            ApplyHitEffects(source.Id, target, projectile.Definition.HitEffects, events);
+            ApplyHitEffects(
+                projectile.SourceId,
+                target,
+                projectile.Definition.HitEffects,
+                events,
+                projectile.CombatSnapshot);
 
             if (projectile.RemainingHits <= 0)
             {
@@ -342,17 +360,19 @@ public sealed partial class BattleInstance
                 area.Position = followed.Position;
             }
 
-            if (CurrentFrame >= area.ExpiryFrame)
-            {
-                DespawnAreaEffect(area, events);
-                continue;
-            }
-
+            var expiring = CurrentFrame >= area.ExpiryFrame;
             if (CurrentFrame < area.NextTickFrame)
             {
+                if (expiring)
+                {
+                    DespawnAreaEffect(area, events);
+                }
+
                 continue;
             }
 
+            // Same rule as periodic buffs: a tick due on the expiry frame
+            // fires, then the area is removed.
             events.Add(new AreaEffectTickedEvent(CurrentFrame, area.Id));
             foreach (var target in ResolveCircle(area.Position, area.Definition.Radius, false)
                          .Where(candidate =>
@@ -372,6 +392,10 @@ public sealed partial class BattleInstance
             }
 
             area.NextTickFrame = CurrentFrame + area.Definition.IntervalFrames;
+            if (expiring)
+            {
+                DespawnAreaEffect(area, events);
+            }
         }
     }
 

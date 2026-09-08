@@ -125,6 +125,7 @@ public sealed partial class BattleInstance
 
         var hit = snapshot?.ComputeBase(command.AttributeId, command.Flat, command.Ratio)
             ?? ComputeBase(liveSource!, command.AttributeId, command.Flat, command.Ratio);
+        var rawBase = hit;
         var wasCrit = false;
         if (command.CanCrit)
         {
@@ -138,7 +139,7 @@ public sealed partial class BattleInstance
             {
                 var critDamage = snapshot?.CritDamage
                     ?? liveSource!.Attributes.Get(_config.Bindings.CritDamage);
-                hit = hit * critDamage / AttributeSet.RatioScale;
+                hit = checked(hit * critDamage / AttributeSet.RatioScale);
             }
         }
 
@@ -163,12 +164,9 @@ public sealed partial class BattleInstance
             hit = 0;
         }
 
-        var rawBase = snapshot?.ComputeBase(command.AttributeId, command.Flat, command.Ratio)
-            ?? CombatMath.ComputeBase(
-                command.Flat,
-                ReadAttribute(liveSource!, command.AttributeId),
-                command.Ratio);
-        if (hit == 0 && rawBase > 0)
+        // Contract: a hit with a positive base always lands at least
+        // MinimumDamage, not only when mitigation happened to round to 0.
+        if (rawBase > 0 && hit < _config.MinimumDamage)
         {
             hit = _config.MinimumDamage;
         }
@@ -209,6 +207,10 @@ public sealed partial class BattleInstance
 
         if (target.CurrentHp <= 0)
         {
+            // Kill runs first so on-kill effects see a dead target. A
+            // self-kill therefore never fires the killer's Kill triggers
+            // (its buffs are already gone and it cannot act); ADR 0029
+            // documents this as the rule rather than an accident.
             Kill(target, command.SourceId, events);
             FireCombatTriggers(
                 CombatTriggerKind.Kill,
@@ -391,8 +393,25 @@ public sealed partial class BattleInstance
 
         target.CurrentHp = 0;
         target.Movement = MovementIntent.None;
-        target.CurrentTargetId = null;
-        target.Shields.Clear();
+        if (target.CurrentTargetId is not null)
+        {
+            target.CurrentTargetId = null;
+            events.Add(new TargetChangedEvent(CurrentFrame, target.Id, null));
+        }
+
+        // Death clears every shield layer; hosts track shield totals from
+        // ShieldChangeEvent deltas, so each layer reports its loss.
+        foreach (var layer in target.Shields.OrderBy(layer => layer.InstanceId).ToArray())
+        {
+            target.Shields.Remove(layer);
+            events.Add(new ShieldChangeEvent(
+                CurrentFrame,
+                target.Id,
+                layer.InstanceId,
+                -layer.Amount,
+                target.ShieldTotal));
+        }
+
         ReleaseCarryInvolving(target, events);
 
         if (target.Lives > 0)

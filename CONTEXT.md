@@ -63,12 +63,12 @@ _Avoid_: 第一版互相挤开, 第一版沿切线滑移, 用俯视缩短位移�
 _Avoid_: 把召唤物做成非 Character 的特殊实体
 
 **Projectile**:
-技能产生的飞行物。V1 按米/秒直线匀速，使用碰撞圆，寿命或出界销毁，默认撞 Terrain AABB 销毁（定义可关闭），并支持可配置穿透次数（0 表示首次有效命中即销毁）。跟踪等转向运动为扩展口，V1 不实现。命中谁由效果 Hit Filter 决定。
-_Avoid_: 把所有持续效果都塞进投射物, V1 做跟踪弹/弹射
+技能产生的飞行物。V1 按米/秒直线匀速，使用碰撞圆，寿命或出界销毁，默认撞 Terrain AABB 销毁（定义可关闭），并支持可配置穿透次数（0 表示首次有效命中即销毁）。发射时快照来源方战斗贡献并派生独立 RNG（同 AreaEffect），施法者死亡或尸体回收后照常飞行命中。`LifetimeFrames = N` 即恰好 N 帧位移，到期帧开头销毁。跟踪等转向运动为扩展口，V1 不实现。命中谁由效果 Hit Filter 决定。
+_Avoid_: 把所有持续效果都塞进投射物, V1 做跟踪弹/弹射, 施法者消失让在途弹体蒸发
 
 
 **AreaEffect**:
-附着于地面或跟随目标的区域效果，按间隔或停留施加伤害/Buff。生成时快照来源方战斗贡献；创建者死亡后仍继续。跟随目标进入 Dead 或消失则销毁。每个区域有独立确定性 RNG。
+附着于地面或跟随目标的区域效果，按间隔或停留施加伤害/Buff。生成时快照来源方战斗贡献；创建者死亡后仍继续。跟随目标进入 Dead 或消失则销毁。每个区域有独立确定性 RNG。到期帧上恰好到期的一跳先结算再销毁（`Duration == Interval` 且不在生成时跳 = 恰好一跳），与周期 Buff 同一口径。
 _Avoid_: 法术场, DoT 圈（口语可，文档用 AreaEffect）
 
 **Terrain**:
@@ -108,16 +108,16 @@ _Avoid_: 未定义顺序的随意乘加, 用浮点表示百分比
 ## Buffs
 
 **Buff**:
-附着在 Character 上的时限状态，包含 Tag、叠层规则与效果列表；Debuff 是敌对向的同类概念，不另建模。
-_Avoid_: Debuff 作为与 Buff 平行的另一套类型系统
+附着在 Character 上的时限状态，包含 Tag、叠层规则与效果列表；Debuff 是敌对向的同类概念，不另建模。到期帧上恰好到期的周期效果先结算再移除（`Duration == Interval` = 恰好一跳）。
+_Avoid_: Debuff 作为与 Buff 平行的另一套类型系统, Duration 等于 Interval 的 DoT 一跳都不结算
 
 **Buff Tag**:
 用于驱散、免疫、互斥与查询的标签（如 `Stun`、`Bleed`、`Magic`）。
 _Avoid_: 仅靠 BuffId 硬编码特殊交互
 
 **Control Effect**:
-限制行动能力的独立效果类型（如眩晕、沉默、定身、缴械），有单独机制，不通过把属性改成 0 来模拟。
-_Avoid_: 用 MaxSpeed=0 等属性窍门代替控制
+限制行动能力的独立效果类型（如眩晕、沉默、定身、缴械），有单独机制，不通过把属性改成 0 来模拟。`Damageable = false` 的单位拒绝控制类 Buff（与拒绝伤害同源）。失去移动能力时清空当前移动意图，控制期间的移动命令被拒绝；控制结束不会自动续走。
+_Avoid_: 用 MaxSpeed=0 等属性窍门代替控制, 眩晕结束后无人下令却自己走起来
 
 **Combat Trigger**:
 挂在 Buff 上的事件订阅：在造成伤害、受到伤害、击杀、起手施法等战斗事实之后，对持有者执行一组即时效果（加资源、治疗、上 Buff 等）。永久被动 = 时长 0 的 Buff。不是另一种 Skill。V1 不含获得/失去 Buff 触发；若以后加，须限定 BuffId/Tag、获得仅新 instance、失去默认不含死亡清理、仍禁止嵌套。自身死亡不靠「失去全部 Buff」冒充。
@@ -162,7 +162,7 @@ _Avoid_: 战斗中换表, 逻辑核直接依赖某种文件格式为唯一入口
 _Avoid_: 运行时解释任意公式字符串作为主路径
 
 **Defense Mitigation**:
-Physical/Magical 的递减减免：`mit = min(def * 10000 / (def + K), MaxMit)`，再 `damage = hit * (10000 - mit) / 10000`。`K` 与 `MaxMit`（默认 8000）在 Battle Config；True 跳过本步；最终至少 `MinDmg`（默认 1）。V1 无穿透。
+Physical/Magical 的递减减免：`mit = min(def * 10000 / (def + K), MaxMit)`，再 `damage = hit * (10000 - mit) / 10000`。`K` 与 `MaxMit`（默认 8000）在 Battle Config；True 跳过本步；基数为正时最终至少 `MinDmg`（默认 1），不只是恰好算成 0 时补。管道每一步乘除都 `checked`，溢出即抛，不静默回绕。V1 无穿透。
 _Avoid_: hit - def 作为主减免, V1 防御穿透
 
 **Crit**:
@@ -194,7 +194,7 @@ _Avoid_: 角色上只有一个混合护盾池, 把护盾和 HP 溢出当成同�
 _Avoid_: 每个技能自定义完计算法
 
 **Death**:
-HP 降至 0 或以下时：若 Lives > 0，则消耗 1 次并进入复活倒计时（不可被选中、不受伤、不行动），倒计时到期后站起；若 Lives = 0，则立即 Dead。致死时清普通 Buff、护盾、当前技能、移动、软锁与 Carry；保留 PreventRevive Buff、技能 CD 与 ModifierSource。普通单位的尸体保留 Battle Config 配置的逻辑帧后销毁；模板标记 `CanBeRevived` 的单位覆盖该计时并无限保留尸体。
+HP 降至 0 或以下时：若 Lives > 0，则消耗 1 次并进入复活倒计时（不可被选中、不受伤、不行动），倒计时到期后站起；若 Lives = 0，则立即 Dead。致死时清普通 Buff、护盾、当前技能、移动、软锁与 Carry，清护盾与软锁各发对应事件；保留 PreventRevive Buff、技能 CD 与 ModifierSource。自杀致死不触发自己的 Kill 触发器。普通单位的尸体保留 Battle Config 配置的逻辑帧后销毁；模板标记 `CanBeRevived` 的单位覆盖该计时并无限保留尸体。
 _Avoid_: 死亡当帧立即从世界抹除且无尸体窗口, 用全局尸体展示时间决定复活资格
 
 **Revive**:
